@@ -37,26 +37,24 @@ public final class ThemeFactory {
 
     private static void dark(Palette p, ThemeDef t) {
         common(p, t.primary, t.secondary);
-        int tint = t.tint;
-        p.set(Slot.BACKGROUND, withAlpha(mix(tint, BLACK, 0.55f), 0xA0));
-        p.set(Slot.PANEL, withAlpha(mix(tint, BLACK, 0.10f), 0xEE));
-        p.set(Slot.PANEL_HEADER, withAlpha(mix(tint, WHITE, 0.06f), 0xF6));
-        if (t.hasSurfaces()) {
-            // explicit Background / Panel colors of the theme
-            p.set(Slot.BACKGROUND, withAlpha(t.background, 0xA0));
-            p.set(Slot.PANEL, withAlpha(t.panel, 0xEE));
-        }
-        p.set(Slot.HOVER, withAlpha(WHITE, 0x14));
-        p.set(Slot.BORDER, withAlpha(mix(tint, WHITE, 0.24f), 0x9A));
-        p.set(Slot.TEXT, 0xFFF2F2F7);
-        p.set(Slot.TEXT_MUTED, 0xFFA9A9BB);
-        p.set(Slot.TEXT_DIM, 0xFF6F6F83);
-        p.set(Slot.TOGGLE_OFF, mix(tint, WHITE, 0.20f));
+        int base = t.hasSurfaces() ? t.panel : t.tint;
+        int body = mix(base, BLACK, 0.82f);
+        p.set(Slot.BACKGROUND, withAlpha(BLACK, 0x78));
+        p.set(Slot.PANEL, withAlpha(body, 0xEC));
+        p.set(Slot.PANEL_HEADER, withAlpha(mix(body, WHITE, 0.08f), 0xF4));
+        // enabled module row: solid accent, like a filled bar
+        p.set(Slot.ACTIVE, withAlpha(mix(t.primary, BLACK, 0.30f), 0xF2));
+        p.set(Slot.HOVER, withAlpha(WHITE, 0x16));
+        p.set(Slot.BORDER, withAlpha(WHITE, 0x12));
+        p.set(Slot.TEXT, 0xFFF4F4F8);
+        p.set(Slot.TEXT_MUTED, 0xFFB0B0BC);
+        p.set(Slot.TEXT_DIM, 0xFF6C6C7A);
+        p.set(Slot.TOGGLE_OFF, withAlpha(WHITE, 0x22));
         p.set(Slot.SLIDER_TRACK, withAlpha(WHITE, 0x22));
-        p.set(Slot.SHADOW, withAlpha(BLACK, 0x80));
-        p.set(Slot.GLOSS, withAlpha(WHITE, 0x0E));
-        p.set(Slot.TOOLTIP, withAlpha(mix(tint, BLACK, 0.30f), 0xF4));
-        p.set(Slot.FIELD, withAlpha(BLACK, 0x55));
+        p.set(Slot.SHADOW, withAlpha(BLACK, 0x60));
+        p.set(Slot.GLOSS, withAlpha(WHITE, 0x08));
+        p.set(Slot.TOOLTIP, withAlpha(mix(body, BLACK, 0.30f), 0xF4));
+        p.set(Slot.FIELD, withAlpha(BLACK, 0x66));
     }
 
     private static void light(Palette p, ThemeDef t) {

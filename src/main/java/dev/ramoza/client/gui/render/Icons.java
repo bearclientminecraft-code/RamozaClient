@@ -155,6 +155,20 @@ public final class Icons {
             "..X.."
     };
 
+    public static final String[] TRIANGLE_DOWN = {
+            "XXXXX",
+            ".XXX.",
+            "..X.."
+    };
+
+    public static final String[] TRIANGLE_RIGHT = {
+            "X..",
+            "XX.",
+            "XXX",
+            "XX.",
+            "X.."
+    };
+
     public static String[] forCategory(Category c) {
         switch (c) {
             case COMBAT: return SHIELD;
@@ -162,6 +176,17 @@ public final class Icons {
             case MISC: return GRID;
             case POT_CHEATS: return CHEST;
             default: return PERSON;
+        }
+    }
+
+    /** File name (without .png) of the category texture in textures/gui/category/. */
+    public static String textureName(Category c) {
+        switch (c) {
+            case COMBAT: return "combat";
+            case RENDER: return "render";
+            case MISC: return "misc";
+            case POT_CHEATS: return "pot_cheats";
+            default: return "player";
         }
     }
 

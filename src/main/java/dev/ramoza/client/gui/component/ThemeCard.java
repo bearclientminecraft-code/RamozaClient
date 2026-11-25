@@ -48,7 +48,6 @@ public final class ThemeCard extends Component implements Focusable {
         float ph = h - 14f;
         g.roundRectH(px, py, pw, ph, Math.max(1f, rs - 1f), def.primary, def.secondary);
         g.roundRect(px + 3f, py + ph - 7f, 11f, 5f, 2f, def.tint);
-        g.roundBorder(px + 3f, py + ph - 7f, 11f, 5f, 2f, 1, ColorUtil.withAlpha(ColorUtil.WHITE, 0x70));
 
         if (sel > 0.02f) {
             g.circle(px + pw - 6f, py + 6f, 4.5f, ColorUtil.mulAlpha(ColorUtil.WHITE, sel));

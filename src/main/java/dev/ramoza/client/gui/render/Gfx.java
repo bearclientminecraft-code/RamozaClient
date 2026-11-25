@@ -17,6 +17,17 @@ public final class Gfx {
     private final float[] alphaStack = new float[24];
     private int alphaTop = 0;
 
+    /** Corner inset tables per quantised radius (1/4 px steps). Avoids a sqrt per row per shape per frame. */
+    private static final float[][] CORNER = new float[64][];
+
+    private static final class Fit {
+        int w;
+        String out;
+    }
+
+    /** Cache for {@link #fit}: the ellipsis search measures text many times, so do it once per (string, width). */
+    private final java.util.HashMap<String, Fit> fits = new java.util.HashMap<>();
+
     public Gfx(Renderer2D r) { this.r = r; }
 
     // ------------------------------------------------------------ alpha / state
@@ -66,11 +77,22 @@ public final class Gfx {
     }
 
     public void roundRect(float x, float y, float w, float h, float radius, int color) {
-        roundRectV(x, y, w, h, radius, color, color);
+        fillRounded(x, y, w, h, radius, color, color, true, true);
     }
 
     /** Rounded rectangle with a vertical gradient. */
     public void roundRectV(float x, float y, float w, float h, float radius, int top, int bottom) {
+        fillRounded(x, y, w, h, radius, top, bottom, true, true);
+    }
+
+    /** Rounded rectangle where the top and/or bottom pair of corners can be left square (panel headers, bodies). */
+    public void roundRectEx(float x, float y, float w, float h, float radius, int color,
+                            boolean roundTop, boolean roundBottom) {
+        fillRounded(x, y, w, h, radius, color, color, roundTop, roundBottom);
+    }
+
+    private void fillRounded(float x, float y, float w, float h, float radius, int top, int bottom,
+                             boolean roundTop, boolean roundBottom) {
         int ix = Math.round(x), iy = Math.round(y);
         int iw = Math.round(x + w) - ix, ih = Math.round(y + h) - iy;
         if (iw <= 0 || ih <= 0) return;
@@ -78,50 +100,80 @@ public final class Gfx {
         bottom = c(bottom);
         if (ColorUtil.alpha(top) == 0 && ColorUtil.alpha(bottom) == 0) return;
         boolean flat = top == bottom;
-        float rad = MathUtil.clamp(radius, 0f, Math.min(iw, ih) / 2f);
-        if (rad < 0.5f) {
+        float rad = clampRad(radius, iw, ih);
+        if (rad < 0.5f || (!roundTop && !roundBottom)) {
             fillV(ix, iy, iw, ih, top, bottom, flat);
             return;
         }
-        int rows = (int) Math.ceil(rad);
-        int botStart = Math.max(rows, ih - rows);
-        for (int j = 0; j < rows && j < ih; j++) roundRow(ix, iy, iw, ih, j, rad, top, bottom, flat);
-        for (int j = botStart; j < ih; j++) roundRow(ix, iy, iw, ih, j, rad, top, bottom, flat);
-        if (botStart > rows) {
-            int midH = botStart - rows;
+        float[] tb = corner(rad);
+        int rows = tb.length;
+        boolean oldAa = antiAlias;
+        if (rad <= 2.5f) antiAlias = false; // 2px corners: AA edge pixels cost 3x the quads and are barely visible
+        int topEnd = roundTop ? Math.min(rows, ih) : 0;
+        int botStart = roundBottom ? Math.max(topEnd, ih - rows) : ih;
+        for (int j = 0; j < topEnd; j++) roundRow(ix, iy, iw, ih, j, tb[j], top, bottom, flat);
+        for (int j = botStart; j < ih; j++) roundRow(ix, iy, iw, ih, j, tb[ih - 1 - j], top, bottom, flat);
+        if (botStart > topEnd) {
+            int midH = botStart - topEnd;
             if (flat) {
-                r.fillRect(ix, iy + rows, iw, midH, top);
+                r.fillRect(ix, iy + topEnd, iw, midH, top);
             } else {
-                r.fillGradientV(ix, iy + rows, iw, midH,
-                        ColorUtil.mix(top, bottom, (float) rows / ih),
+                r.fillGradientV(ix, iy + topEnd, iw, midH,
+                        ColorUtil.mix(top, bottom, (float) topEnd / ih),
                         ColorUtil.mix(top, bottom, (float) botStart / ih));
             }
         }
+        antiAlias = oldAa;
     }
 
-    /** Rounded rectangle with a horizontal gradient (small heights only, e.g. slider fills). */
+    /**
+     * Rounded rectangle with a horizontal gradient. Drawn as full-height vertical strips for the
+     * interior (one quad per strip) plus solid end-colour corner caps, instead of one quad per row per
+     * segment as before (a 10-theme grid cost ~2000 quads per frame).
+     */
     public void roundRectH(float x, float y, float w, float h, float radius, int left, int right) {
         int ix = Math.round(x), iy = Math.round(y);
         int iw = Math.round(x + w) - ix, ih = Math.round(y + h) - iy;
         if (iw <= 0 || ih <= 0) return;
         left = c(left);
         right = c(right);
-        float rad = MathUtil.clamp(radius, 0f, Math.min(iw, ih) / 2f);
-        int segs = MathUtil.clamp(iw / 3, 1, 10);
-        for (int j = 0; j < ih; j++) {
-            float ins = rad < 0.5f ? 0f : inset(rad, j + 0.5f, ih);
-            float xs = ix + ins;
-            float xe = ix + iw - ins;
-            float step = (xe - xs) / segs;
-            for (int s = 0; s < segs; s++) {
-                float a = xs + step * s;
-                float b = s == segs - 1 ? xe : xs + step * (s + 1);
-                if (s > 0) a = Math.round(a);
-                if (s < segs - 1) b = Math.round(b);
-                float t = ((a + b) * 0.5f - ix) / iw;
-                span(iy + j, a, b, ColorUtil.mix(left, right, t), s == 0, s == segs - 1);
+        if (ColorUtil.alpha(left) == 0 && ColorUtil.alpha(right) == 0) return;
+        float rad = clampRad(radius, iw, ih);
+        int rc = rad < 0.5f ? 0 : (int) Math.ceil(rad);
+        if (iw <= 2 * rc + 1) {
+            int mid = ColorUtil.mix(left, right, 0.5f);
+            fillRounded(ix, iy, iw, ih, rad, mid, mid, true, true);
+            return;
+        }
+        if (rc > 0) {
+            float[] tb = corner(rad);
+            int rows = Math.min(tb.length, ih);
+            int lc = ColorUtil.mix(left, right, rc * 0.5f / iw);
+            int rcCol = ColorUtil.mix(left, right, 1f - rc * 0.5f / iw);
+            int botStart = Math.max(rows, ih - tb.length);
+            for (int j = 0; j < rows; j++) capRow(ix, iy, iw, rc, j, tb[j], lc, rcCol);
+            for (int j = botStart; j < ih; j++) capRow(ix, iy, iw, rc, j, tb[ih - 1 - j], lc, rcCol);
+            if (botStart > rows) {
+                r.fillRect(ix, iy + rows, rc, botStart - rows, lc);
+                r.fillRect(ix + iw - rc, iy + rows, rc, botStart - rows, rcCol);
             }
         }
+        int innerW = iw - 2 * rc;
+        int segs = MathUtil.clamp(innerW / 3, 1, 12);
+        int prev = ix + rc;
+        for (int s = 1; s <= segs; s++) {
+            int next = s == segs ? ix + iw - rc : ix + rc + Math.round(innerW * (float) s / segs);
+            if (next > prev) {
+                float t = ((prev + next) * 0.5f - ix) / iw;
+                r.fillRect(prev, iy, next - prev, ih, ColorUtil.mix(left, right, t));
+            }
+            prev = next;
+        }
+    }
+
+    private void capRow(int ix, int iy, int iw, int rc, int j, float ins, int leftCol, int rightCol) {
+        span(iy + j, ix + ins, ix + rc, leftCol, true, false);
+        span(iy + j, ix + iw - rc, ix + iw - ins, rightCol, false, true);
     }
 
     /** Anti-aliased rounded outline, {@code t} pixels thick, drawn inside the given bounds. */
@@ -156,6 +208,7 @@ public final class Gfx {
         if (ColorUtil.alpha(color) < 3) return;
         boolean old = antiAlias;
         antiAlias = false;
+        spread = Math.min(spread, 2);
         for (int i = 1; i <= spread; i++) {
             float f = 1f - (i - 1f) / spread;
             f *= f;
@@ -213,8 +266,23 @@ public final class Gfx {
         r.popTransform();
     }
 
-    /** Shortens the string with "..." so it fits into maxW pixels. */
+    /** Shortens the string with "..." so it fits into maxW pixels. Cached per (string, width). */
     public String fit(String s, float maxW) {
+        int mw = (int) maxW;
+        Fit f = fits.get(s);
+        if (f != null && f.w == mw) return f.out;
+        String out = fitSlow(s, mw);
+        if (f == null) {
+            if (fits.size() > 512) fits.clear();
+            f = new Fit();
+            fits.put(s, f);
+        }
+        f.w = mw;
+        f.out = out;
+        return out;
+    }
+
+    private String fitSlow(String s, float maxW) {
         if (textWidth(s) <= maxW) return s;
         String dots = "...";
         float dw = textWidth(dots);
@@ -244,6 +312,13 @@ public final class Gfx {
         }
     }
 
+    /** Category icon (PNG texture, tinted). */
+    public void categoryIcon(dev.ramoza.client.module.Category c, float x, float y, int size, int color) {
+        color = c(color);
+        if (ColorUtil.alpha(color) == 0) return;
+        r.drawTexture("category/" + Icons.textureName(c), Math.round(x), Math.round(y), size, color);
+    }
+
     // ------------------------------------------------------------ internals
 
     private void fillV(int x, int y, int w, int h, int top, int bottom, boolean flat) {
@@ -251,15 +326,41 @@ public final class Gfx {
         else r.fillGradientV(x, y, w, h, top, bottom);
     }
 
-    private void roundRow(int ix, int iy, int iw, int ih, int j, float rad, int top, int bottom, boolean flat) {
-        float ins = inset(rad, j + 0.5f, ih);
+    private void roundRow(int ix, int iy, int iw, int ih, int j, float ins, int top, int bottom, boolean flat) {
         int col = flat ? top : ColorUtil.mix(top, bottom, (j + 0.5f) / ih);
         span(iy + j, ix + ins, ix + iw - ins, col, true, true);
     }
 
+    private static float clampRad(float radius, int iw, int ih) {
+        return MathUtil.clamp(Math.min(radius, 15f), 0f, Math.min(iw, ih) / 2f);
+    }
+
+    /** Horizontal edge inset per row of one rounded corner, for rows 0..ceil(rad)-1 (cached). */
+    private static float[] corner(float rad) {
+        int q = Math.min(CORNER.length - 1, Math.max(1, Math.round(rad * 4f)));
+        float[] t = CORNER[q];
+        if (t == null) {
+            float rr = q / 4f;
+            t = new float[(int) Math.ceil(rr)];
+            for (int j = 0; j < t.length; j++) {
+                float dy = rr - (j + 0.5f);
+                t[j] = rr - (float) Math.sqrt(Math.max(0f, rr * rr - dy * dy));
+            }
+            CORNER[q] = t;
+        }
+        return t;
+    }
+
+    private static float cornerInset(float rad, int j, int h) {
+        float[] tb = corner(rad);
+        if (j < tb.length) return tb[j];
+        int k = h - 1 - j;
+        return k >= 0 && k < tb.length ? tb[k] : 0f;
+    }
+
     private void borderRow(int ix, int iy, int iw, int ih, int j, float rad, float radIn, int t,
                            int innerW, int innerH, int color) {
-        float insO = rad < 0.5f ? 0f : inset(rad, j + 0.5f, ih);
+        float insO = rad < 0.5f ? 0f : cornerInset(rad, j, ih);
         float oL = ix + insO;
         float oR = ix + iw - insO;
         boolean hasInner = innerW > 0 && innerH > 0 && j >= t && j < ih - t;
@@ -268,7 +369,7 @@ public final class Gfx {
             return;
         }
         int jj = j - t;
-        float insI = radIn < 0.5f ? 0f : inset(radIn, jj + 0.5f, innerH);
+        float insI = radIn < 0.5f ? 0f : cornerInset(radIn, jj, innerH);
         float iL = ix + t + insI;
         float iR = ix + iw - t - insI;
         span(iy + j, oL, iL, color, true, true);

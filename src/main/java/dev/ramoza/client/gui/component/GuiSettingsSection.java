@@ -86,8 +86,7 @@ public final class GuiSettingsSection extends PanelEntry implements Focusable {
         float rs = m.radiusSmall;
 
         if (hv > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.mulAlpha(p.hover(), hv));
-        g.bitmap(Icons.GEAR, x + m.pad, y + (m.rowH - 9f) / 2f, 1, ColorUtil.mix(p.muted(), p.primary(), Math.max(ex, hv)));
-        g.textMid(NAME, x + m.pad + 14f, y, m.rowH, ColorUtil.mix(p.muted(), p.text(), Math.max(hv, 0.6f)));
+        g.textMid(NAME, x + m.pad, y, m.rowH, ColorUtil.mix(p.muted(), p.text(), Math.max(hv, 0.6f)));
 
         int chevron = ColorUtil.mix(p.dim(), p.primary(), ex);
         float cx = x + w - m.pad - 5f;

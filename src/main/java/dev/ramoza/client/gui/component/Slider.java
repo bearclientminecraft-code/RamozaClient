@@ -24,6 +24,8 @@ public final class Slider extends Control {
     private final SmoothFloat shown = new SmoothFloat(-1f, 22f);
     private boolean dragging;
     private float lastPad = 6f;
+    private double lastValue = Double.NaN;
+    private String lastText = "";
 
     public Slider(String label, String tip, DoubleSupplier getter, DoubleConsumer setter,
                   double min, double max, double step, DoubleFunction<String> format) {
@@ -61,19 +63,23 @@ public final class Slider extends Control {
 
         float act = Math.max(hv * 0.6f, press.get());
         g.text(label, x + m.pad, y + 2f, ColorUtil.mix(p.muted(), p.text(), act));
-        g.textRight(format.apply(getter.getAsDouble()), x + w - m.pad, y + 2f, ColorUtil.mix(p.muted(), p.primary(), Math.max(act, 0.5f)));
+        double cur = getter.getAsDouble();
+        if (Double.doubleToLongBits(cur) != Double.doubleToLongBits(lastValue)) {
+            lastValue = cur;
+            lastText = format.apply(cur); // formatting allocates, so only redo it when the value changed
+        }
+        g.textRight(lastText, x + w - m.pad, y + 2f, ColorUtil.mix(p.muted(), p.primary(), Math.max(act, 0.5f)));
 
         float tx = x + m.pad;
         float tw = w - 2f * m.pad;
         float ty = y + h - 8f;
         g.roundRect(tx, ty, tw, TRACK_H, TRACK_H / 2f, p.sliderTrack());
         float fillW = tw * MathUtil.saturate(shown.get());
-        if (fillW >= 1f) g.roundRectH(tx, ty, fillW, TRACK_H, TRACK_H / 2f, p.sliderFill(), p.secondary());
+        if (fillW >= 1f) g.roundRect(tx, ty, fillW, TRACK_H, TRACK_H / 2f, p.sliderFill());
 
         float kr = 3.5f + hv * 0.8f + press.get() * 0.7f;
         float kcx = tx + fillW;
         float kcy = ty + TRACK_H / 2f;
-        g.circle(kcx, kcy, kr + 1f, ColorUtil.withAlpha(ColorUtil.BLACK, 0x50));
         g.circle(kcx, kcy, kr, p.sliderKnob());
         drawFocus(ctx);
     }

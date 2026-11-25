@@ -81,24 +81,21 @@ public final class ModuleRow extends PanelEntry implements Focusable {
         float en = enabled.get();
         float pr = press.get();
         float ex = expand.get();
-        float rs = m.radiusSmall;
+        float rs = m.radiusSmall; // soft row corners
 
-        if (hv > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.mulAlpha(p.hover(), hv));
         if (en > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.mulAlpha(p.active(), en));
+        if (hv > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.mulAlpha(p.hover(), hv));
         if (pr > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.withAlpha(ColorUtil.BLACK, Math.round(0x34 * pr)));
-        if (en > 0.01f) g.roundRect(x + 1f, y + 3f, 2f, m.rowH - 6f, 1f, ColorUtil.mulAlpha(p.primary(), en));
 
         int nameColor = ColorUtil.mix(p.muted(), p.text(), Math.max(en, hv * 0.75f));
-        float textMax = w - m.pad * 2f - Toggle.PILL_W - (controls.isEmpty() ? 4f : 14f);
-        g.textMid(g.fit(module.name(), textMax), x + m.pad + en * 1.5f, y, m.rowH, nameColor);
-
-        Toggle.drawPill(ctx, x + w - m.pad - Toggle.PILL_W, y + (m.rowH - Toggle.PILL_H) / 2f, en);
+        float textMax = w - m.pad * 2f - (controls.isEmpty() ? 0f : 8f);
+        g.textMid(g.fit(module.name(), textMax), x + m.pad, y, m.rowH, nameColor);
 
         if (!controls.isEmpty()) {
-            float cx = x + w - m.pad - Toggle.PILL_W - 10f;
-            int chevron = ColorUtil.mix(p.dim(), p.primary(), ex);
-            g.bitmap(Icons.CHEVRON_RIGHT, cx + 1f, y + (m.rowH - 5f) / 2f, 1, ColorUtil.mulAlpha(chevron, 1f - ex));
-            g.bitmap(Icons.CHEVRON_DOWN, cx - 1f, y + (m.rowH - 3f) / 2f, 1, ColorUtil.mulAlpha(chevron, ex));
+            float cx = x + w - m.pad - 4f;
+            int chevron = ColorUtil.mix(p.dim(), p.text(), Math.max(en, hv));
+            if (ex >= 0.5f) g.bitmap(Icons.CHEVRON_DOWN, cx - 1f, y + (m.rowH - 3f) / 2f, 1, chevron);
+            else g.bitmap(Icons.CHEVRON_RIGHT, cx + 1f, y + (m.rowH - 5f) / 2f, 1, chevron);
         }
 
         float areaH = ex * (childH + 2f * CHILD_PAD);
@@ -106,9 +103,9 @@ public final class ModuleRow extends PanelEntry implements Focusable {
             g.pushScissor(x, y + m.rowH, w, areaH);
             ctx.pushClip(x, y + m.rowH, w, areaH);
             g.roundRect(x + 1f, y + m.rowH, w - 2f, childH + 2f * CHILD_PAD, rs, ColorUtil.mulAlpha(p.field(), ex));
-            g.pushAlpha(ex);
+            if (ex < 0.999f) g.pushAlpha(ex);
             for (Control c : controls) c.render(ctx);
-            g.popAlpha();
+            if (ex < 0.999f) g.popAlpha();
             ctx.popClip();
             g.popScissor();
         }

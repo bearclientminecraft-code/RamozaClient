@@ -19,6 +19,9 @@ public interface Renderer2D {
 
     default int textWidth(String text) { return textWidth(text, UiFont.INTER); }
 
+    /** Draws a square white-on-alpha texture assets/ramozaclient/textures/gui/{name}.png tinted with argb. */
+    void drawTexture(String name, int x, int y, int size, int argb);
+
     int fontHeight();
 
     void pushScissor(int x, int y, int w, int h);

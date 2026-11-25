@@ -6,8 +6,8 @@ import dev.ramoza.client.util.MathUtil;
 /** Single source of truth for sizes and spacing. Compact mode blends smoothly via {@code density}. */
 public final class Metrics {
     public final float density;
-    public final int panelW = 116;
-    public final int panelGap = 8;
+    public final int panelW = 120;
+    public final int panelGap = 6;
     public final int headerH;
     public final int rowH;
     public final int controlH;
@@ -23,13 +23,13 @@ public final class Metrics {
     /** @param density 0 = comfortable, 1 = compact */
     public Metrics(GuiSettings s, float density) {
         this.density = density;
-        headerH = MathUtil.lerpInt(22, 19, density);
-        rowH = MathUtil.lerpInt(16, 13, density);
+        headerH = MathUtil.lerpInt(17, 15, density);
+        rowH = MathUtil.lerpInt(14, 12, density);
         controlH = MathUtil.lerpInt(14, 12, density);
         sliderH = MathUtil.lerpInt(22, 19, density);
         optionH = MathUtil.lerpInt(13, 11, density);
         pad = MathUtil.lerpInt(6, 4, density);
-        topBlockH = MathUtil.lerpInt(58, 50, density);
+        topBlockH = MathUtil.lerpInt(34, 30, density);
         radius = s.radiusPx();
         radiusSmall = Math.max(0f, radius - 2f);
         radiusLarge = Math.min(14f, radius + 2f);

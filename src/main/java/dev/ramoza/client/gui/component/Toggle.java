@@ -4,15 +4,17 @@ import dev.ramoza.client.gui.Metrics;
 import dev.ramoza.client.gui.UiContext;
 import dev.ramoza.client.gui.anim.SmoothFloat;
 import dev.ramoza.client.gui.render.Gfx;
+import dev.ramoza.client.gui.render.Icons;
 import dev.ramoza.client.gui.theme.Palette;
 import dev.ramoza.client.util.ColorUtil;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
+/** Boolean setting: label + a small rounded checkbox (no oval switch). */
 public final class Toggle extends Control {
-    public static final float PILL_W = 18f;
-    public static final float PILL_H = 9f;
+    public static final float BOX = 9f;
+    private static final float BOX_RADIUS = 2f;
 
     private final BooleanSupplier getter;
     private final Consumer<Boolean> setter;
@@ -36,20 +38,18 @@ public final class Toggle extends Control {
         Palette p = ctx.p;
         Metrics m = ctx.m;
         float hv = hover.get();
+        float t = state.get();
         if (hv > 0.01f) g.roundRect(x, y, w, h, m.radiusSmall, ColorUtil.mulAlpha(p.hover(), hv));
-        g.textMid(label, x + m.pad, y, h, ColorUtil.mix(p.muted(), p.text(), Math.max(state.get() * 0.7f, hv)));
-        drawPill(ctx, x + w - m.pad - PILL_W, y + (h - PILL_H) / 2f, state.get());
-        drawFocus(ctx);
-    }
+        g.textMid(label, x + m.pad, y, h, ColorUtil.mix(p.muted(), p.text(), Math.max(t * 0.7f, hv)));
 
-    /** Shared pill switch drawing (also used by module rows). t = 0 off, 1 on. */
-    public static void drawPill(UiContext ctx, float px, float py, float t) {
-        Gfx g = ctx.g;
-        Palette p = ctx.p;
-        g.roundRect(px, py, PILL_W, PILL_H, PILL_H / 2f, ColorUtil.mix(p.toggleOff(), p.toggleOn(), t));
-        float kd = PILL_H - 2f;
-        float kx = px + 1f + t * (PILL_W - PILL_H);
-        g.roundRect(kx, py + 1f, kd, kd, kd / 2f, p.toggleKnob());
+        float bx = x + w - m.pad - BOX;
+        float by = y + (h - BOX) / 2f;
+        g.roundRect(bx, by, BOX, BOX, BOX_RADIUS, ColorUtil.mix(p.field(), p.primary(), t));
+        if (t < 0.98f) {
+            g.roundBorder(bx, by, BOX, BOX, BOX_RADIUS, 1, ColorUtil.mulAlpha(ColorUtil.mix(p.dim(), p.primary(), t), 1f - t * 0.5f));
+        }
+        if (t > 0.05f) g.bitmap(Icons.CHECK, bx + 2f, by + 3f, 1, ColorUtil.mulAlpha(ColorUtil.WHITE, t));
+        drawFocus(ctx);
     }
 
     @Override

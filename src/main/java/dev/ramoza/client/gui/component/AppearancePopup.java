@@ -48,7 +48,6 @@ public final class AppearancePopup extends Component {
         setBounds(px, py, W, ph);
 
         g.pushAlpha(o);
-        g.shadow(px, py, W, ph, ctx.m.radius + 2f, 5, p.shadow());
         g.roundRect(px, py, W, ph, ctx.m.radius + 2f, p.panel());
         g.roundRect(px, py, W, ph, ctx.m.radius + 2f, ColorUtil.withAlpha(p.header(), 0x60));
         g.roundBorder(px, py, W, ph, ctx.m.radius + 2f, 1, p.border());

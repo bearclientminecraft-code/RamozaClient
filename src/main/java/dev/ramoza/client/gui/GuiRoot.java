@@ -37,6 +37,8 @@ public final class GuiRoot {
     private static final float STAGGER = 0.05f;
     private static final float SEARCH_W = 190f;
     private static final float SEARCH_H = 18f;
+    private static final float TOP_MARGIN = 8f;
+    private static final float LEFT_MARGIN = 12f;
 
     private final RamozaCore core;
     private final UiContext ctx;
@@ -73,7 +75,7 @@ public final class GuiRoot {
                 panel.add(new GuiSettingsSection(core.settings));
             }
             for (ClientModule m : core.modules.in(c)) panel.add(new ModuleRow(m));
-            panels.add(panel);
+            if (!panel.isEmpty()) panels.add(panel); // categories without modules are not drawn
         }
         panelX = new float[panels.size()];
 
@@ -177,11 +179,10 @@ public final class GuiRoot {
 
         ctx.hoverBlocked = settingsPanel.contains(ctx.mx, ctx.my) || (popup.isVisible() && popup.hit(ctx.mx, ctx.my));
 
-        float maxPanelH = Math.min(vh * 0.62f, 330f);
-        float top = Math.max(6f, (vh - (m.topBlockH + maxPanelH)) / 2f - 8f);
+        float top = TOP_MARGIN;
+        float maxPanelH = MathUtil.clamp(vh - (top + m.topBlockH) - 34f, 80f, 420f);
 
-        drawLogo(cx, top);
-        search.setBounds(cx - SEARCH_W / 2f, top + 29f, SEARCH_W, SEARCH_H);
+        search.setBounds(cx - SEARCH_W / 2f, top, SEARCH_W, SEARCH_H);
         search.render(ctx);
 
         String q = search.query().trim().toLowerCase(Locale.ROOT);
@@ -193,7 +194,7 @@ public final class GuiRoot {
         int visible = 0;
         for (CategoryPanel panel : panels) if (panel.hasMatches()) visible++;
         float totalW = visible * m.panelW + Math.max(0, visible - 1) * m.panelGap;
-        float left = (vw - totalW) / 2f;
+        float left = LEFT_MARGIN; // panels start at the left edge, like the reference
         float panelsTop = top + m.topBlockH;
         int slot = 0;
         for (int i = 0; i < n; i++) {
@@ -239,47 +240,6 @@ public final class GuiRoot {
         fm.end();
     }
 
-    /** The first letter "R" of the logo is the Blacksword watermark glyph, the rest is Inter. */
-    private static UiFont logoFont(int index) {
-        return index == 0 ? UiFont.WATERMARK : UiFont.INTER;
-    }
-
-    private void drawLogo(float cx, float top) {
-        Gfx g = ctx.g;
-        Palette p = ctx.p;
-        String name = "RAMOZA";
-        float scale = 2f;
-        float spacing = 1.5f;
-        float tw = -spacing;
-        for (int i = 0; i < name.length(); i++) tw += g.textWidth(name.substring(i, i + 1), logoFont(i)) * scale + spacing;
-        float x = cx - tw / 2f;
-        for (int i = 0; i < name.length(); i++) {
-            String ch = name.substring(i, i + 1);
-            int col = ColorUtil.mix(p.primary(), p.secondary(), i / (name.length() - 1f));
-            UiFont lf = logoFont(i);
-            g.textScaled(ch, x, top + 1.5f, scale, ColorUtil.withAlpha(ColorUtil.BLACK, 0x55), false, lf);
-            g.textScaled(ch, x, top, scale, col, false, lf);
-            x += g.textWidth(ch, lf) * scale + spacing;
-        }
-
-        String sub = "CLIENT";
-        float subSpacing = 3f;
-        float sw = -subSpacing;
-        for (int i = 0; i < sub.length(); i++) sw += g.textWidth(sub.substring(i, i + 1)) + subSpacing;
-        float sx = cx - sw / 2f;
-        float sy = top + 19f;
-        for (int i = 0; i < sub.length(); i++) {
-            String ch = sub.substring(i, i + 1);
-            g.text(ch, sx, sy, p.dim());
-            sx += g.textWidth(ch) + subSpacing;
-        }
-        float lineW = 26f;
-        g.roundRectH(cx - sw / 2f - 8f - lineW, sy + 4f, lineW, 1f, 0f,
-                ColorUtil.withAlpha(p.primary(), 0x00), ColorUtil.withAlpha(p.primary(), 0xA0));
-        g.roundRectH(cx + sw / 2f + 8f, sy + 4f, lineW, 1f, 0f,
-                ColorUtil.withAlpha(p.secondary(), 0xA0), ColorUtil.withAlpha(p.secondary(), 0x00));
-    }
-
     private void drawEmptyState(float cx, float y) {
         Gfx g = ctx.g;
         Palette p = ctx.p;
@@ -289,9 +249,7 @@ public final class GuiRoot {
         float x = cx - w / 2f;
         float yy = y + (1f - a) * 6f;
         g.pushAlpha(a);
-        g.shadow(x, yy, w, h, ctx.m.radiusLarge, 5, p.shadow());
         g.roundRect(x, yy, w, h, ctx.m.radiusLarge, p.panel());
-        g.roundBorder(x, yy, w, h, ctx.m.radiusLarge, 1, p.border());
         g.bitmap(Icons.SEARCH, cx - 9f, yy + 10f, 2, p.dim());
         g.textCenter("No results", cx, yy + 34f, p.text());
         g.textCenter(g.fit("for \"" + emptyQuery + "\"", w - 20f), cx, yy + 47f, p.muted());

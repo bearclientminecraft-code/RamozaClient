@@ -90,18 +90,12 @@ public final class SettingsPanel extends Component {
         float px = anchorRight - W;
         float py = anchorBottom - ph - 6f + (1f - o) * 6f;
         setBounds(px, py, W, ph);
-        float rl = m.radiusLarge;
+        float rl = m.radius + 1f;
 
         g.pushAlpha(o);
-        g.shadow(px, py, W, ph, rl, 6, p.shadow());
-        g.roundRect(px, py, W, ph, rl, p.panel());
-        g.pushScissor(px, py, W, HEADER_H);
-        g.roundRect(px, py, W, HEADER_H + 2f * rl, rl, p.header());
-        g.popScissor();
-        g.roundRectV(px, py, W, Math.min(ph, 34f), rl, p.gloss(), ColorUtil.withAlpha(p.gloss(), 0));
-
-        g.bitmap(Icons.GEAR, px + m.pad, py + (HEADER_H - 9f) / 2f, 1, p.primary());
-        g.textMid("GUI Settings", px + m.pad + 14f, py, HEADER_H, p.text());
+        g.roundRectEx(px, py + HEADER_H, W, ph - HEADER_H, rl, p.panel(), false, true);
+        g.roundRectEx(px, py, W, HEADER_H, rl, p.header(), true, false);
+        g.textMid("GUI Settings", px + m.pad + 1f, py, HEADER_H, p.text());
 
         boolean overClose = !ctx.hoverBlocked && ctx.mx >= px + W - CLOSE_ZONE && ctx.mx < px + W
                 && ctx.my >= py && ctx.my < py + HEADER_H;
@@ -109,8 +103,7 @@ public final class SettingsPanel extends Component {
         closeHover.update(ctx.dt);
         g.bitmap(Icons.CLOSE, px + W - m.pad - 7f, py + (HEADER_H - 5f) / 2f, 1,
                 ColorUtil.mix(p.dim(), p.text(), closeHover.get()));
-        g.roundRectH(px + m.pad, py + HEADER_H - 1f, W - 2f * m.pad, 1f, 0f,
-                ColorUtil.withAlpha(p.primary(), 0xB0), ColorUtil.withAlpha(p.secondary(), 0x30));
+        g.rect(px, py + HEADER_H - 1f, W, 1f, p.primary());
 
         ctx.pushClip(px, py, W, ph);
         float cy = py + HEADER_H + 3f;
@@ -121,11 +114,10 @@ public final class SettingsPanel extends Component {
             cy += ch;
         }
         float bw = reset.preferredWidth(g, m);
-        reset.setBounds(px + W - m.pad - bw, py + ph - FOOTER_H + 3f, bw, 18f);
+        reset.setBounds(px + W - m.pad - bw, py + ph - FOOTER_H + 4f, bw, 16f);
         reset.render(ctx);
         ctx.popClip();
 
-        g.roundBorder(px, py, W, ph, rl, 1, p.border());
         g.popAlpha();
     }
 

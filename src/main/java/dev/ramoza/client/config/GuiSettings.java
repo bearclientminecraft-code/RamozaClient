@@ -17,9 +17,9 @@ public final class GuiSettings {
     /** Percent values, 0-100. */
     public float menuOpacity = 100f;
     public float textOpacity = 100f;
-    public float cornerRounding = 50f;
+    public float cornerRounding = 40f;
     public float animationSpeed = 1.0f;
-    public boolean blur = true;
+    public boolean blur = false; // vanilla blur is the single most expensive thing in the GUI
     public boolean showTooltips = true;
     public boolean compactMode = false;
 
@@ -34,9 +34,9 @@ public final class GuiSettings {
         scale = 1.0f;
         menuOpacity = 100f;
         textOpacity = 100f;
-        cornerRounding = 50f;
+        cornerRounding = 40f;
         animationSpeed = 1.0f;
-        blur = true;
+        blur = false;
         showTooltips = true;
         compactMode = false;
     }

@@ -24,7 +24,6 @@ public final class CategoryPanel extends Component implements Focusable {
     private static final float BODY_PAD = 3f;
 
     private final Category category;
-    private final String[] icon;
     private final GuiSettings settings;
     private final List<PanelEntry> entries = new ArrayList<>();
 
@@ -52,7 +51,6 @@ public final class CategoryPanel extends Component implements Focusable {
     public CategoryPanel(Category category, GuiSettings settings) {
         this.category = category;
         this.settings = settings;
-        this.icon = Icons.forCategory(category);
         this.expand = new SmoothFloat(isCollapsed() ? 0f : 1f, 12f);
     }
 
@@ -78,6 +76,8 @@ public final class CategoryPanel extends Component implements Focusable {
     }
 
     public boolean hasMatches() { return visibleTarget; }
+
+    public boolean isEmpty() { return entries.isEmpty(); }
 
     public boolean isShown() { return shown.get() > 0.01f; }
 
@@ -143,47 +143,40 @@ public final class CategoryPanel extends Component implements Focusable {
         headerHover.update(ctx.dt);
         float hh = headerHover.get();
         float act = activeAnim.get();
-        float rl = m.radiusLarge;
+        float r = m.radius;
+        boolean collapsedLook = ex < 0.5f;
 
         g.pushAlpha(a);
 
-        g.shadow(px, py, pw, panelH, rl, 5, p.shadow());
-        g.roundRect(px, py, pw, panelH, rl, p.panel());
+        // body surface starts under the header, so translucent colors are never blended twice
+        if (bodyH > 1f) g.roundRectEx(px, py + headerH, pw, bodyH, r, p.panel(), false, true);
 
-        // header: rounded rect taller than the visible area so only the top corners show
-        g.pushScissor(px, py, pw, headerH);
-        float hh2 = headerH + 2f * rl * ex;
-        g.roundRect(px, py, pw, hh2, rl, p.header());
-        if (hh > 0.01f) g.roundRect(px, py, pw, hh2, rl, ColorUtil.mulAlpha(p.hover(), hh));
-        g.popScissor();
+        // header: only the top corners are rounded while the panel is open
+        g.roundRectEx(px, py, pw, headerH, r, p.header(), true, collapsedLook);
+        if (hh > 0.01f) g.roundRectEx(px, py, pw, headerH, r, ColorUtil.mulAlpha(p.hover(), hh), true, collapsedLook);
 
-        g.roundRectV(px, py, pw, Math.min(panelH, 34f), rl, p.gloss(), ColorUtil.withAlpha(p.gloss(), 0));
+        float ix = px + m.pad + 1f;
+        int iconSize = 10;
+        int iconCol = ColorUtil.mix(p.muted(), p.text(), Math.max(act, 0.55f + hh * 0.45f));
+        g.categoryIcon(category, ix, py + (headerH - iconSize) / 2f, iconSize, iconCol);
+        ix += iconSize + 4f;
+        g.textMid(category.title(), ix, py, headerH, ColorUtil.mix(p.muted(), p.text(), Math.max(act, 0.55f + hh * 0.45f)));
 
-        float ix = px + m.pad;
-        g.bitmap(icon, ix, py + (headerH - 9f) / 2f, 1, ColorUtil.mix(p.muted(), p.primary(), act));
-        g.textMid(category.title(), ix + 14f, py, headerH, ColorUtil.mix(p.muted(), p.text(), Math.max(act, 0.35f + hh * 0.65f)));
-
-        float chevX = px + pw - m.pad - 5f;
-        int chevColor = ColorUtil.mix(p.dim(), p.primary(), ex);
-        g.bitmap(Icons.CHEVRON_RIGHT, chevX + 1f, py + (headerH - 5f) / 2f, 1, ColorUtil.mulAlpha(chevColor, 1f - ex));
-        g.bitmap(Icons.CHEVRON_DOWN, chevX - 1f, py + (headerH - 3f) / 2f, 1, ColorUtil.mulAlpha(chevColor, ex));
-
-        int count = enabledCount();
-        if (count > 0) {
-            String s = String.valueOf(count);
-            float bw = g.textWidth(s) + 7f;
-            float bx = chevX - 6f - bw;
-            g.roundRect(bx, py + (headerH - 10f) / 2f, bw, 10f, 5f, ColorUtil.withAlpha(p.primary(), 0x38));
-            g.text(s, bx + 3.5f, py + (headerH - 8f) / 2f, p.primary());
+        float tx = px + pw - m.pad - 5f;
+        if (ex >= 0.5f) {
+            g.bitmap(Icons.TRIANGLE_DOWN, tx, py + (headerH - 3f) / 2f, 1, p.muted());
+        } else {
+            g.bitmap(Icons.TRIANGLE_RIGHT, tx + 1f, py + (headerH - 5f) / 2f, 1, p.muted());
         }
 
-        g.roundRectH(px + m.pad, py + headerH - 1f, pw - 2f * m.pad, 1f, 0f,
-                ColorUtil.mulAlpha(ColorUtil.withAlpha(p.primary(), 0xC0), 0.3f + 0.7f * ex),
-                ColorUtil.mulAlpha(ColorUtil.withAlpha(p.secondary(), 0x30), 0.3f + 0.7f * ex));
+        // accent underline (pulled in from the corners while collapsed so it does not poke out of them)
+        float li = (1f - ex) * Math.max(0f, r - 1f);
+        g.rect(px + li, py + headerH - 1f, pw - 2f * li, 1f, p.primary());
 
         bodyTop = py + headerH;
         bodyBottom = bodyTop + bodyH;
         if (bodyH > 1f) {
+            // ONE scissor for the whole body (scissor changes split the GPU batch; per-row ones were the main cost)
             g.pushScissor(px, bodyTop, pw, bodyH);
             ctx.pushClip(px, bodyTop, pw, bodyH);
             float cy = bodyTop + BODY_PAD - scroll.get();
@@ -193,17 +186,10 @@ public final class CategoryPanel extends Component implements Focusable {
                 float vh = e.visibleHeight(ctx);
                 if (vh < 0.5f) continue;
                 boolean draw = cy + vh > bodyTop - 1f && cy < bodyBottom + 1f;
-                if (draw) {
-                    g.pushScissor(px, cy, pw, vh);
-                    ctx.pushClip(px, cy, pw, vh);
-                    g.pushAlpha(e.matchValue());
-                    e.renderEntry(ctx, ex0, cy, ew, true);
-                    g.popAlpha();
-                    ctx.popClip();
-                    g.popScissor();
-                } else {
-                    e.renderEntry(ctx, ex0, cy, ew, false);
-                }
+                float mv = e.matchValue();
+                if (draw && mv < 0.999f) g.pushAlpha(mv);
+                e.renderEntry(ctx, ex0, cy, ew, draw);
+                if (draw && mv < 0.999f) g.popAlpha();
                 cy += vh + m.entryGap;
             }
             ctx.popClip();
@@ -215,14 +201,13 @@ public final class CategoryPanel extends Component implements Focusable {
             if (maxScroll > 1f && scrollbar.get() > 0.01f) {
                 float thumbH = Math.max(14f, bodyH * viewH / contentH);
                 float ty = bodyTop + (scroll.get() / maxScroll) * (bodyH - thumbH);
-                g.roundRect(px + pw - 4f, ty, 2f, thumbH, 1f,
+                g.roundRect(px + pw - 3f, ty, 2f, thumbH, 1f,
                         ColorUtil.mulAlpha(ColorUtil.withAlpha(p.text(), 0x80), scrollbar.get()));
             }
         }
 
-        g.roundBorder(px, py, pw, panelH, rl, 1, p.border());
         if (focusAnim.get() > 0.02f) {
-            g.roundBorder(px + 1f, py + 1f, pw - 2f, headerH - 2f, Math.max(0f, rl - 1f), 1,
+            g.roundBorder(px + 1f, py + 1f, pw - 2f, headerH - 2f, Math.max(0f, r - 1f), 1,
                     ColorUtil.mulAlpha(p.primary(), focusAnim.get()));
         }
         g.popAlpha();

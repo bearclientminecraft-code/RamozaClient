@@ -12,9 +12,8 @@ import java.util.function.IntConsumer;
 /** Bottom-right bar: Theme / Appearance, GUI Settings, Self Destruct (GUI hide). */
 public final class BottomBar extends Component {
     private static final float MARGIN = 8f;
-    private static final float INNER = 3f;
-    private static final float BTN_H = 18f;
-    private static final float GAP = 2f;
+    private static final float BTN_H = 16f;
+    private static final float GAP = 4f;
     private static final float CONFIRM_TIME = 3f;
 
     private final PillButton appearance;
@@ -73,24 +72,17 @@ public final class BottomBar extends Component {
         float w1 = appearance.preferredWidth(g, m);
         float w2 = settings.preferredWidth(g, m);
         float w3 = destruct.preferredWidth(g, m);
-        float total = INNER * 2f + w1 + w2 + w3 + GAP * 2f;
-        float height = BTN_H + INNER * 2f;
+        float total = w1 + w2 + w3 + GAP * 2f;
         float bx = vw - MARGIN - total;
-        float by = vh - MARGIN - height;
-        setBounds(bx, by, total, height);
-        float r = Math.min(height / 2f, m.radius + 3f);
+        float by = vh - MARGIN - BTN_H;
+        setBounds(bx, by, total, BTN_H);
 
-        g.shadow(bx, by, total, height, r, 4, p.shadow());
-        g.roundRect(bx, by, total, height, r, p.panel());
-        g.roundRectV(bx, by, total, height, r, p.gloss(), 0);
-        g.roundBorder(bx, by, total, height, r, 1, p.border());
-
-        float cx = bx + INNER;
-        appearance.setBounds(cx, by + INNER, w1, BTN_H);
+        float cx = bx;
+        appearance.setBounds(cx, by, w1, BTN_H);
         cx += w1 + GAP;
-        settings.setBounds(cx, by + INNER, w2, BTN_H);
+        settings.setBounds(cx, by, w2, BTN_H);
         cx += w2 + GAP;
-        destruct.setBounds(cx, by + INNER, w3, BTN_H);
+        destruct.setBounds(cx, by, w3, BTN_H);
 
         appearance.render(ctx);
         settings.render(ctx);

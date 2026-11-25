@@ -1,7 +1,7 @@
 # RamozaClient
 
 Premium ClickGUI (только визуальная часть) для Minecraft **1.21.11**, Fabric, Java 21, Yarn.
-GUI-основа плюс модули категории Player: Auto Respawn, Fast Place, Free Cam, Key Pearl, No Jump Delay, No Push, Sprint, XP Macro. Остальные категории пока заполнены заглушками `Example N`.
+GUI-основа плюс модули категории Player: Auto Respawn, Fast Place, Free Cam, Key Pearl, No Jump Delay, No Push, Sprint, XP Macro. Категории без модулей (Render, Pot Cheats) в GUI не рисуются и появятся сами, как только в них зарегистрируют модуль.
 
 ## Статус (честно)
 
@@ -79,7 +79,7 @@ public final class MyModule extends ClientModule {
     @Override protected void onEnable() { /* ... */ }
 }
 ```
-Зарегистрируйте в `ModuleManager.registerDefaults()` вместо заглушек `Example N`. GUI подхватит модуль, настройки и сохранение сам.
+Зарегистрируйте в `ModuleManager.registerDefaults()` (заглушек `Example N` больше нет). GUI подхватит модуль, настройки и сохранение сам.
 
 ## Модули Player
 

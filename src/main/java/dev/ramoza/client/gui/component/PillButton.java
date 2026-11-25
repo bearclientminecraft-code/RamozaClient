@@ -41,7 +41,7 @@ public final class PillButton extends Control {
     public void setOnArrow(IntConsumer c) { this.onArrow = c; }
 
     public float preferredWidth(Gfx g, Metrics m) {
-        return m.pad + Icons.width(icon) + 4f + g.textWidth(widestText) + m.pad;
+        return m.pad * 2f + 4f + g.textWidth(widestText);
     }
 
     @Override public float preferredHeight(Metrics m) { return 20f; }
@@ -55,20 +55,17 @@ public final class PillButton extends Control {
         Palette p = ctx.p;
         Metrics m = ctx.m;
         float hv = hover.get();
-        float r = Math.min(h / 2f, m.radius + 1f);
+        float r = m.radiusSmall + 1f;
         int accent = danger ? DANGER : p.primary();
 
+        g.roundRect(x, y, w, h, r, p.panel());
         if (lit.get() > 0.01f) g.roundRect(x, y, w, h, r, ColorUtil.mulAlpha(p.active(), lit.get()));
         if (hv > 0.01f) g.roundRect(x, y, w, h, r, ColorUtil.mulAlpha(danger ? ColorUtil.withAlpha(DANGER, 0x26) : p.hover(), hv));
         if (press.get() > 0.01f) g.roundRect(x, y, w, h, r, ColorUtil.withAlpha(ColorUtil.BLACK, Math.round(0x30 * press.get())));
 
         float k = Math.max(hv, lit.get());
-        int col = ColorUtil.mix(p.muted(), danger ? DANGER : p.text(), k);
-        int iconCol = ColorUtil.mix(p.muted(), accent, k);
-        float ix = x + m.pad;
-        float iy = y + (h - Icons.height(icon)) / 2f;
-        g.bitmap(icon, ix, iy, 1, iconCol);
-        g.text(text, ix + Icons.width(icon) + 4f, y + (h - 8f) / 2f, col);
+        int col = ColorUtil.mix(p.text(), danger ? DANGER : ColorUtil.WHITE, k);
+        g.textCenter(text, x + w / 2f, y + (h - 8f) / 2f, col);
 
         if (focusAnim.get() > 0.02f) g.roundBorder(x, y, w, h, r, 1, ColorUtil.mulAlpha(accent, focusAnim.get()));
     }

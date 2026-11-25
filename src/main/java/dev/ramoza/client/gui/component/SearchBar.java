@@ -41,9 +41,8 @@ public final class SearchBar extends Component implements Focusable {
         clearAnim.setTarget(has ? 1f : 0f);
         clearAnim.update(ctx.dt);
 
-        float r = h / 2f;
+        float r = Math.min(h / 2f, ctx.m.radiusSmall + 2f);
         float f = focusAnim.get();
-        g.shadow(x, y, w, h, r, 3, ColorUtil.mulAlpha(p.shadow(), 0.6f));
         g.roundRect(x, y, w, h, r, p.field());
         g.roundBorder(x, y, w, h, r, 1,
                 ColorUtil.mix(ColorUtil.mulAlpha(p.border(), 0.9f), p.primary(), Math.max(f, hover.get() * 0.4f)));
@@ -67,7 +66,7 @@ public final class SearchBar extends Component implements Focusable {
         if (ca > 0.01f) {
             float cx = x + w - CLEAR_ZONE + 2f;
             boolean overClear = hoveredNow && ctx.mx >= x + w - CLEAR_ZONE;
-            g.circle(cx + 4f, y + h / 2f, 5.5f, ColorUtil.mulAlpha(p.hover(), ca * (overClear ? 2f : 1f)));
+            g.roundRect(cx - 1.5f, y + h / 2f - 5.5f, 11f, 11f, 3f, ColorUtil.mulAlpha(p.hover(), ca * (overClear ? 2f : 1f)));
             g.bitmap(Icons.CLOSE, cx + 1.5f, y + (h - 5f) / 2f, 1, ColorUtil.mulAlpha(overClear ? p.text() : p.muted(), ca));
         }
     }

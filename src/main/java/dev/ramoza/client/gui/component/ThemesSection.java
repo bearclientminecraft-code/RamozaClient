@@ -80,8 +80,7 @@ public final class ThemesSection extends PanelEntry implements Focusable {
         float hv = hover.get();
         float rs = m.radiusSmall;
         if (hv > 0.01f) g.roundRect(x, y, w, m.rowH, rs, ColorUtil.mulAlpha(p.hover(), hv));
-        g.bitmap(Icons.PALETTE, x + m.pad, y + (m.rowH - 9f) / 2f, 1, ColorUtil.mix(p.muted(), p.primary(), Math.max(ex, hv)));
-        g.textMid("Themes", x + m.pad + 14f, y, m.rowH, ColorUtil.mix(p.muted(), p.text(), Math.max(hv, 0.6f)));
+        g.textMid("Themes", x + m.pad, y, m.rowH, ColorUtil.mix(p.muted(), p.text(), Math.max(hv, 0.6f)));
         ThemeDef active = themes.theme();
         g.roundRectH(x + w - m.pad - 31f, y + (m.rowH - 5f) / 2f, 15f, 5f, 2.5f, active.primary, active.secondary);
         int chevron = ColorUtil.mix(p.dim(), p.primary(), ex);

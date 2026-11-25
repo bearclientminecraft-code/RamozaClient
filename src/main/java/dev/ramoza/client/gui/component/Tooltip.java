@@ -52,7 +52,6 @@ public final class Tooltip {
         float x = MathUtil.clamp(ax + 10f, 4f, Math.max(4f, vw - w - 4f));
         float y = MathUtil.clamp(ay + 14f + (1f - a) * 3f, 4f, Math.max(4f, vh - h - 4f));
         g.pushAlpha(a);
-        g.shadow(x, y, w, h, ctx.m.radiusSmall + 1f, 3, ctx.p.shadow());
         g.roundRect(x, y, w, h, ctx.m.radiusSmall + 1f, ctx.p.tooltip());
         g.roundBorder(x, y, w, h, ctx.m.radiusSmall + 1f, 1, ColorUtil.withAlpha(ColorUtil.WHITE, 0x30));
         g.text(text, x + 6f, y + 4f, 0xFFF2F2F7);
