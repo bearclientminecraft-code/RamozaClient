@@ -44,4 +44,7 @@ public class ClientModule {
 
     protected void onEnable() {}
     protected void onDisable() {}
+
+    /** Called once per client tick (START_CLIENT_TICK) while the module is enabled. */
+    public void onTick() {}
 }

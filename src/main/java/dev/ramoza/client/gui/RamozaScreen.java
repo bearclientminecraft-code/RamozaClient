@@ -37,13 +37,19 @@ public final class RamozaScreen extends Screen {
         float dt = lastNanos == 0L ? 1f / 60f : (now - lastNanos) / 1.0e9f;
         lastNanos = now;
 
-        // Real menu blur (vanilla). Cannot be animated, so it is optional (GUI Settings -> Blur).
+        renderer.begin(context, this.textRenderer);
+        root.render(this.width, this.height, mouseX, mouseY, dt);
+    }
+
+    /**
+     * Vanilla (1.21.6+) calls renderBackground() itself before render(); calling it again from render()
+     * crashed with "Can only blur once per frame". We override it so blur follows GUI Settings -> Blur.
+     */
+    @Override
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
         if (core.settings.blur && root.fade() > 0.02f) {
             super.renderBackground(context, mouseX, mouseY, deltaTicks);
         }
-
-        renderer.begin(context, this.textRenderer);
-        root.render(this.width, this.height, mouseX, mouseY, dt);
     }
 
     @Override

@@ -30,7 +30,7 @@ public final class Metrics {
         optionH = MathUtil.lerpInt(13, 11, density);
         pad = MathUtil.lerpInt(6, 4, density);
         topBlockH = MathUtil.lerpInt(58, 50, density);
-        radius = s.roundedCorners;
+        radius = s.radiusPx();
         radiusSmall = Math.max(0f, radius - 2f);
         radiusLarge = Math.min(14f, radius + 2f);
     }

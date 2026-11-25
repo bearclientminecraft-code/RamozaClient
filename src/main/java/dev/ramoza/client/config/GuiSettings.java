@@ -8,27 +8,35 @@ import java.util.Map;
 /** Visual interface preferences. Persisted by {@link ConfigManager}. */
 public final class GuiSettings {
     public static final float SCALE_MIN = 0.75f, SCALE_MAX = 1.5f;
-    public static final float OPACITY_MIN = 0.40f, OPACITY_MAX = 1.0f;
+    public static final float PERCENT_MIN = 0f, PERCENT_MAX = 100f;
+    /** Corner radius in pixels at "Corner Rounding" = 100. */
+    public static final float MAX_RADIUS_PX = 12f;
     public static final float SPEED_MIN = 0.5f, SPEED_MAX = 2.0f;
-    public static final int CORNERS_MIN = 0, CORNERS_MAX = 10;
 
     public float scale = 1.0f;
-    public float opacity = 1.0f;
+    /** Percent values, 0-100. */
+    public float menuOpacity = 100f;
+    public float textOpacity = 100f;
+    public float cornerRounding = 50f;
     public float animationSpeed = 1.0f;
     public boolean blur = true;
-    public float roundedCorners = 6f;
     public boolean showTooltips = true;
     public boolean compactMode = false;
+
+    public float menuAlpha() { return menuOpacity / 100f; }
+    public float textAlpha() { return textOpacity / 100f; }
+    public float radiusPx() { return cornerRounding / 100f * MAX_RADIUS_PX; }
 
     /** Panel collapsed state, remembered between sessions. */
     public final Map<Category, Boolean> collapsed = new EnumMap<>(Category.class);
 
     public void reset() {
         scale = 1.0f;
-        opacity = 1.0f;
+        menuOpacity = 100f;
+        textOpacity = 100f;
+        cornerRounding = 50f;
         animationSpeed = 1.0f;
         blur = true;
-        roundedCorners = 6f;
         showTooltips = true;
         compactMode = false;
     }

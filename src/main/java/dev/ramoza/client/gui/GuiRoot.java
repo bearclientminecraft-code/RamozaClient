@@ -7,6 +7,7 @@ import dev.ramoza.client.gui.anim.SmoothFloat;
 import dev.ramoza.client.gui.component.AppearancePopup;
 import dev.ramoza.client.gui.component.BottomBar;
 import dev.ramoza.client.gui.component.CategoryPanel;
+import dev.ramoza.client.gui.component.GuiSettingsSection;
 import dev.ramoza.client.gui.component.KeybindButton;
 import dev.ramoza.client.gui.component.ModuleRow;
 import dev.ramoza.client.gui.component.SearchBar;
@@ -14,6 +15,7 @@ import dev.ramoza.client.gui.component.SettingsPanel;
 import dev.ramoza.client.gui.component.ThemesSection;
 import dev.ramoza.client.gui.render.Gfx;
 import dev.ramoza.client.gui.render.Icons;
+import dev.ramoza.client.gui.render.UiFont;
 import dev.ramoza.client.gui.theme.Palette;
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.ClientModule;
@@ -66,7 +68,10 @@ public final class GuiRoot {
 
         for (Category c : Category.values()) {
             CategoryPanel panel = new CategoryPanel(c, core.settings);
-            if (c == Category.MISC) panel.add(new ThemesSection(core.themes));
+            if (c == Category.MISC) {
+                panel.add(new ThemesSection(core.themes));
+                panel.add(new GuiSettingsSection(core.settings));
+            }
             for (ClientModule m : core.modules.in(c)) panel.add(new ModuleRow(m));
             panels.add(panel);
         }
@@ -133,6 +138,7 @@ public final class GuiRoot {
         Metrics m = ctx.m;
         Palette p = ctx.p;
         Gfx g = ctx.g;
+        g.setTextAlpha(s.textAlpha());
 
         // open / close timeline
         if (closing) {
@@ -233,6 +239,11 @@ public final class GuiRoot {
         fm.end();
     }
 
+    /** The first letter "R" of the logo is the Blacksword watermark glyph, the rest is Inter. */
+    private static UiFont logoFont(int index) {
+        return index == 0 ? UiFont.WATERMARK : UiFont.INTER;
+    }
+
     private void drawLogo(float cx, float top) {
         Gfx g = ctx.g;
         Palette p = ctx.p;
@@ -240,14 +251,15 @@ public final class GuiRoot {
         float scale = 2f;
         float spacing = 1.5f;
         float tw = -spacing;
-        for (int i = 0; i < name.length(); i++) tw += g.textWidth(name.substring(i, i + 1)) * scale + spacing;
+        for (int i = 0; i < name.length(); i++) tw += g.textWidth(name.substring(i, i + 1), logoFont(i)) * scale + spacing;
         float x = cx - tw / 2f;
         for (int i = 0; i < name.length(); i++) {
             String ch = name.substring(i, i + 1);
             int col = ColorUtil.mix(p.primary(), p.secondary(), i / (name.length() - 1f));
-            g.textScaled(ch, x, top + 1.5f, scale, ColorUtil.withAlpha(ColorUtil.BLACK, 0x55), false);
-            g.textScaled(ch, x, top, scale, col, false);
-            x += g.textWidth(ch) * scale + spacing;
+            UiFont lf = logoFont(i);
+            g.textScaled(ch, x, top + 1.5f, scale, ColorUtil.withAlpha(ColorUtil.BLACK, 0x55), false, lf);
+            g.textScaled(ch, x, top, scale, col, false, lf);
+            x += g.textWidth(ch, lf) * scale + spacing;
         }
 
         String sub = "CLIENT";

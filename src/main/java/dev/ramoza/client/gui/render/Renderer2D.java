@@ -9,9 +9,15 @@ public interface Renderer2D {
 
     void fillGradientV(int x, int y, int w, int h, int topArgb, int bottomArgb);
 
-    void drawText(String text, int x, int y, int argb, boolean shadow);
+    void drawText(String text, int x, int y, int argb, boolean shadow, UiFont font);
 
-    int textWidth(String text);
+    int textWidth(String text, UiFont font);
+
+    default void drawText(String text, int x, int y, int argb, boolean shadow) {
+        drawText(text, x, y, argb, shadow, UiFont.INTER);
+    }
+
+    default int textWidth(String text) { return textWidth(text, UiFont.INTER); }
 
     int fontHeight();
 

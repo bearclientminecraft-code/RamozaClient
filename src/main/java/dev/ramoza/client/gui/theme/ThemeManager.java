@@ -18,7 +18,7 @@ public final class ThemeManager {
 
     public ThemeManager(GuiSettings settings) {
         this.settings = settings;
-        this.target = ThemeFactory.build(theme(), appearance, settings.opacity);
+        this.target = ThemeFactory.build(theme(), appearance, settings.menuAlpha());
         this.current = target.copy();
     }
 
@@ -35,12 +35,12 @@ public final class ThemeManager {
 
     /** Jumps straight to the target palette (used after loading the config). */
     public void snap() {
-        target = ThemeFactory.build(theme(), appearance, settings.opacity);
+        target = ThemeFactory.build(theme(), appearance, settings.menuAlpha());
         current.copyFrom(target);
     }
 
     public void update(float dt) {
-        target = ThemeFactory.build(theme(), appearance, settings.opacity);
+        target = ThemeFactory.build(theme(), appearance, settings.menuAlpha());
         float k = 1f - (float) Math.exp(-FOLLOW_SPEED * dt);
         current.approach(target, k);
     }

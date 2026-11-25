@@ -30,6 +30,9 @@ public final class RamozaClientMod implements ClientModInitializer {
         restoreKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ramozaclient.restore_gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_END, category));
 
+        // modules tick before the game reads input, so Sprint / No Jump Delay take effect this tick
+        ClientTickEvents.START_CLIENT_TICK.register(client -> core.modules.tick());
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (restoreKey.wasPressed()) core.setGuiHidden(false);
             while (openKey.wasPressed()) {

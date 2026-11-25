@@ -27,13 +27,13 @@ public final class McRenderer implements Renderer2D {
     }
 
     @Override
-    public void drawText(String text, int x, int y, int argb, boolean shadow) {
-        context.drawText(font, text, x, y, argb, shadow);
+    public void drawText(String text, int x, int y, int argb, boolean shadow, UiFont f) {
+        context.drawText(font, Fonts.text(text, f), x, y, argb, shadow);
     }
 
     @Override
-    public int textWidth(String text) {
-        return font.getWidth(text);
+    public int textWidth(String text, UiFont f) {
+        return font.getWidth(Fonts.text(text, f));
     }
 
     @Override

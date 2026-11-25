@@ -33,9 +33,10 @@ public final class ConfigManager {
         }
         GuiSettings s = core.settings;
         s.scale = MathUtil.clamp(f(p, "gui.scale", s.scale), GuiSettings.SCALE_MIN, GuiSettings.SCALE_MAX);
-        s.opacity = MathUtil.clamp(f(p, "gui.opacity", s.opacity), GuiSettings.OPACITY_MIN, GuiSettings.OPACITY_MAX);
+        s.menuOpacity = MathUtil.clamp(f(p, "gui.menuOpacity", s.menuOpacity), GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX);
+        s.textOpacity = MathUtil.clamp(f(p, "gui.textOpacity", s.textOpacity), GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX);
+        s.cornerRounding = MathUtil.clamp(f(p, "gui.cornerRounding", s.cornerRounding), GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX);
         s.animationSpeed = MathUtil.clamp(f(p, "gui.animationSpeed", s.animationSpeed), GuiSettings.SPEED_MIN, GuiSettings.SPEED_MAX);
-        s.roundedCorners = MathUtil.clamp(f(p, "gui.roundedCorners", s.roundedCorners), GuiSettings.CORNERS_MIN, GuiSettings.CORNERS_MAX);
         s.blur = Boolean.parseBoolean(p.getProperty("gui.blur", Boolean.toString(s.blur)));
         s.showTooltips = Boolean.parseBoolean(p.getProperty("gui.showTooltips", Boolean.toString(s.showTooltips)));
         s.compactMode = Boolean.parseBoolean(p.getProperty("gui.compactMode", Boolean.toString(s.compactMode)));
@@ -67,9 +68,10 @@ public final class ConfigManager {
         Properties p = new Properties();
         GuiSettings s = core.settings;
         p.setProperty("gui.scale", Float.toString(s.scale));
-        p.setProperty("gui.opacity", Float.toString(s.opacity));
+        p.setProperty("gui.menuOpacity", Float.toString(s.menuOpacity));
+        p.setProperty("gui.textOpacity", Float.toString(s.textOpacity));
+        p.setProperty("gui.cornerRounding", Float.toString(s.cornerRounding));
         p.setProperty("gui.animationSpeed", Float.toString(s.animationSpeed));
-        p.setProperty("gui.roundedCorners", Float.toString(s.roundedCorners));
         p.setProperty("gui.blur", Boolean.toString(s.blur));
         p.setProperty("gui.showTooltips", Boolean.toString(s.showTooltips));
         p.setProperty("gui.compactMode", Boolean.toString(s.compactMode));

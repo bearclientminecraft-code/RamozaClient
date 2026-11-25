@@ -41,6 +41,11 @@ public final class ThemeFactory {
         p.set(Slot.BACKGROUND, withAlpha(mix(tint, BLACK, 0.55f), 0xA0));
         p.set(Slot.PANEL, withAlpha(mix(tint, BLACK, 0.10f), 0xEE));
         p.set(Slot.PANEL_HEADER, withAlpha(mix(tint, WHITE, 0.06f), 0xF6));
+        if (t.hasSurfaces()) {
+            // explicit Background / Panel colors of the theme
+            p.set(Slot.BACKGROUND, withAlpha(t.background, 0xA0));
+            p.set(Slot.PANEL, withAlpha(t.panel, 0xEE));
+        }
         p.set(Slot.HOVER, withAlpha(WHITE, 0x14));
         p.set(Slot.BORDER, withAlpha(mix(tint, WHITE, 0.24f), 0x9A));
         p.set(Slot.TEXT, 0xFFF2F2F7);

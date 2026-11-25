@@ -4,7 +4,7 @@ public enum Category {
     COMBAT("Combat"),
     RENDER("Render"),
     MISC("Misc"),
-    POT_CHESTS("Pot Chests"),
+    POT_CHEATS("Pot Cheats"),
     PLAYER("Player");
 
     private final String title;

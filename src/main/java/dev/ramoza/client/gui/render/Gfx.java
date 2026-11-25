@@ -10,6 +10,8 @@ import dev.ramoza.client.util.MathUtil;
 public final class Gfx {
     private final Renderer2D r;
     private float alpha = 1f;
+    /** Extra multiplier for all text (GUI Settings -> Text Opacity). */
+    private float textAlpha = 1f;
     /** Edge anti-aliasing for rounded shapes. Switched off internally for soft shadows (cheap + invisible). */
     private boolean antiAlias = true;
     private final float[] alphaStack = new float[24];
@@ -29,6 +31,13 @@ public final class Gfx {
     }
 
     public float alpha() { return alpha; }
+
+    public void setTextAlpha(float a) { textAlpha = MathUtil.saturate(a); }
+
+    private int tc(int color) {
+        color = c(color);
+        return textAlpha >= 0.999f ? color : ColorUtil.mulAlpha(color, textAlpha);
+    }
 
     private int c(int color) {
         return alpha >= 0.999f ? color : ColorUtil.mulAlpha(color, alpha);
@@ -165,14 +174,16 @@ public final class Gfx {
 
     public float textWidth(String s) { return r.textWidth(s); }
 
+    public float textWidth(String s, UiFont f) { return r.textWidth(s, f); }
+
     public void text(String s, float x, float y, int color) {
-        color = c(color);
+        color = tc(color);
         if (ColorUtil.alpha(color) < 4 || s.isEmpty()) return;
         r.drawText(s, Math.round(x), Math.round(y), color, false);
     }
 
     public void textShadow(String s, float x, float y, int color) {
-        color = c(color);
+        color = tc(color);
         if (ColorUtil.alpha(color) < 4 || s.isEmpty()) return;
         r.drawText(s, Math.round(x), Math.round(y), color, true);
     }
@@ -191,10 +202,14 @@ public final class Gfx {
     }
 
     public void textScaled(String s, float x, float y, float scale, int color, boolean shadow) {
-        color = c(color);
+        textScaled(s, x, y, scale, color, shadow, UiFont.INTER);
+    }
+
+    public void textScaled(String s, float x, float y, float scale, int color, boolean shadow, UiFont f) {
+        color = tc(color);
         if (ColorUtil.alpha(color) < 4 || s.isEmpty()) return;
         r.pushTransform(x, y, scale, scale);
-        r.drawText(s, 0, 0, color, shadow);
+        r.drawText(s, 0, 0, color, shadow, f);
         r.popTransform();
     }
 

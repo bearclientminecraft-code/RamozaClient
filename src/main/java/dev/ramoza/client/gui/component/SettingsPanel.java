@@ -32,20 +32,24 @@ public final class SettingsPanel extends Component {
                 () -> s.scale, v -> s.scale = (float) v,
                 GuiSettings.SCALE_MIN, GuiSettings.SCALE_MAX, 0.05,
                 v -> String.format(Locale.ROOT, "%.2fx", v)));
-        controls.add(new Slider("Opacity", "Opacity of the panel surfaces",
-                () -> s.opacity, v -> s.opacity = (float) v,
-                GuiSettings.OPACITY_MIN, GuiSettings.OPACITY_MAX, 0.05,
-                v -> Math.round(v * 100) + "%"));
+        controls.add(new Slider("Menu Opacity", "Opacity of the panel surfaces",
+                () -> s.menuOpacity, v -> s.menuOpacity = (float) v,
+                GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX, 1,
+                v -> Math.round(v) + "%"));
+        controls.add(new Slider("Text Opacity", "Opacity of all GUI text",
+                () -> s.textOpacity, v -> s.textOpacity = (float) v,
+                GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX, 1,
+                v -> Math.round(v) + "%"));
         controls.add(new Slider("Animation Speed", "Speed of all interface animations",
                 () -> s.animationSpeed, v -> s.animationSpeed = (float) v,
                 GuiSettings.SPEED_MIN, GuiSettings.SPEED_MAX, 0.1,
                 v -> String.format(Locale.ROOT, "%.1fx", v)));
         controls.add(new Toggle("Blur", "Blur the game behind the GUI (uses the vanilla menu blur)",
                 () -> s.blur, v -> s.blur = v));
-        controls.add(new Slider("Rounded Corners", "Corner radius in pixels",
-                () -> s.roundedCorners, v -> s.roundedCorners = (float) v,
-                GuiSettings.CORNERS_MIN, GuiSettings.CORNERS_MAX, 1,
-                v -> Math.round(v) + " px"));
+        controls.add(new Slider("Corner Rounding", "How round the corners are",
+                () -> s.cornerRounding, v -> s.cornerRounding = (float) v,
+                GuiSettings.PERCENT_MIN, GuiSettings.PERCENT_MAX, 1,
+                v -> Math.round(v) + "%"));
         controls.add(new Toggle("Show Tooltips", "Show hints when hovering elements",
                 () -> s.showTooltips, v -> s.showTooltips = v));
         controls.add(new Toggle("Compact Mode", "Tighter rows and spacing",

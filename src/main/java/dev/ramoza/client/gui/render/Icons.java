@@ -160,7 +160,7 @@ public final class Icons {
             case COMBAT: return SHIELD;
             case RENDER: return EYE;
             case MISC: return GRID;
-            case POT_CHESTS: return CHEST;
+            case POT_CHEATS: return CHEST;
             default: return PERSON;
         }
     }
