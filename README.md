@@ -8,12 +8,12 @@ GUI-основа плюс модули категории Player: Auto Respawn, 
 | Что | Состояние |
 |---|---|
 | Слой интерфейса (всё в `gui/`, кроме 3 адаптеров) | компилируется javac без предупреждений, прогнан headless: 36 проверок + фаззинг 6000 событий |
-| Адаптеры Minecraft (`McRenderer`, `RamozaScreen`, `RamozaClientMod`) | **не собирались против настоящего Minecraft**, проверены только на заглушках API |
-| Модули Player (`module/player/`, `mixin/`) | компилируется против настоящего Minecraft 1.21.11; **работа модулей и Mixin в игре не проверялась** |
-| `./gradlew build` | собирается: проверено локально (loom 1.19.4, Gradle 9.9.2, JDK 25, class-файлы Java 21) |
-| Запуск в игре | **не проверялся** (headless-среда) |
+| Адаптеры Minecraft (`McRenderer`, `RamozaScreen`, `RamozaClientMod`) | собираются против настоящего Minecraft 1.21.11 |
+| Модули Player и Combat (`module/player/`, `module/combat/`, `mixin/`) | компилируются против настоящего Minecraft 1.21.11; **работа модулей и Mixin в игре не проверялась** |
+| `gradle build` | **проверен локально**: Fabric Loom 1.19.4, Gradle 9.9.2, JDK 25, class-файлы Java 21 |
+| Запуск в игре | **не проверялся** (в среде сборки нет клиента Minecraft) |
 
-Если CI на GitHub упадёт, пришлите лог: скорее всего это версия в `gradle.properties` или мелкая правка API в одном из трёх адаптеров.
+Готовый jar без сборки: `dist/RamozaClient-1.0.0.jar` (в этом репозитории). Если CI на GitHub упадёт, пришлите лог.
 
 ## Как собрать через GitHub
 
@@ -29,9 +29,7 @@ GUI-основа плюс модули категории Player: Auto Respawn, 
    ```
 3. Вкладка **Actions** -> workflow `build` -> артефакт `RamozaClient-1.21.11` (jar). Нужен Fabric API в папке mods.
 
-Готовый jar без сборки: `dist/RamozaClient-1.0.0.jar` (Fabric 1.21.11).
-
-Локально: `./gradlew build` (loom 1.19.4 требует JDK 25 для запуска Gradle, классы компилируются под Java 21) или открыть папку в IntelliJ IDEA.
+Локально: `./gradlew build` (Gradle 9.9.2 уже в wrapper, нужен JDK 25; jar появится в `build/libs/`).
 Если Gradle скажет, что версия не найдена, возьмите актуальные для 1.21.11 с https://fabricmc.net/develop/ и поправьте `gradle.properties`.
 
 ## Управление
@@ -94,6 +92,10 @@ public final class MyModule extends ClientModule {
 | Key Pearl | по клавише: слот Pearl, бросок, слот Totem; `Pearl Slot`, `Totem Slot` (1-9), `Delay (ms)`, `Random Delay` | опрос GLFW, `interactItem`; без жемчуга в слоте ничего не делает |
 | XP Macro | спамит бутылки опыта из любой руки, хотбара или инвентаря; `Activation` (Always / Hold Key), `Key`, `Search Inventory`, `Delay (ms)`, `Random Delay` | `interactItem`, для инвентаря `clickSlot(SWAP)` туда и обратно |
 
+| Auto Inventory Totem | при открытии инвентаря (E) один раз при открытии переносит тотем из инвентаря в `Totem Slot` (1-9), без задержек | `clickSlot(SWAP)` на экране инвентаря |
+| Hover Totem | наведение на тотем в инвентаре без клика переносит его; `OffHand Totem` (сначала в левую руку, потом в `Totem Slot`), `Totem Slot`, `Delay (ms)`, `Random Delay` | `HandledScreenAccessor.focusedSlot`, `clickSlot(SWAP)` (кнопка 40 = левая рука) |
+| Totem Offhand | нет тотема в левой руке: тотем в `Totem Slot`, выбор слота, F, возврат слота; `Open Inventory`, `Delay (ms)`, `Random Delay` | `clickSlot(SWAP)` + пакет `SWAP_ITEM_WITH_OFFHAND`; выбор слота и F в разных тиках |
+| Auto Double Hand | при ударе, потере здоровья или подбросе вверх (взрыв, якорь, заряд ветра) выбирает `Totem Slot`, если там тотем; `Return Slot`, `Return Delay (ms)` (возврат прежнего слота после последнего удара), `Delay (ms)`, `Random Delay` | `hurtTime`, здоровье, скорость по Y > 0.6 |
 | Auto Mace | в падении бьёт цель под прицелом булавой: слот булавы, удар, возврат слота; `Min Fall Distance` | `attackEntity` + `swingHand`, один удар за падение |
 | Mace Swap | при вашем клике по сущности в падении переключает слот на булаву до пакета атаки и возвращает после задержки | `MinecraftClientMixin` на `doAttack` |
 | Stun Slam | клик по цели со щитом в падении: топор, пауза, булава, пауза, возврат слота | тот же хук; нужны топор и булава в хотбаре |
@@ -110,8 +112,9 @@ public final class MyModule extends ClientModule {
 
 ## Известные ограничения
 
-- **Новые модули Player не собирались против настоящего Minecraft**: проверены javac на заглушках API. Под сомнением имена `PlayerInventory.getSelectedSlot/setSelectedSlot`, `MinecraftClient.itemUseCooldown`, `Entity.changeLookDirection`, `Camera.update / isThirdPerson / setPos / setRotation`. Если сборка или запуск упадёт, пришлите лог.
-- **Макросы Mace/Spear/Pearl/Elytra** тоже не собирались против настоящего Minecraft. Под сомнением `MinecraftClient.doAttack` (возвращает boolean), `Entity.fallDistance`, `PlayerInventory.setSelectedSlot`. Что именно делает Lunge на копье в 1.21.11, мод не знает: он просто делает обычный левый клик, остальное решает игра.
+- **Новые модули Player и Combat собираются против настоящего Minecraft 1.21.11, но в игре не проверялись**: имена методов верные для 1.21.11, поведение зависит от сервера и от порядка тиков.
+- **Макросы Mace/Spear/Pearl/Elytra** в игре не проверялись. Что именно делает Lunge на копье в 1.21.11, мод не знает: он просто делает обычный левый клик, остальное решает игра.
+- **Модули Totem** (Auto Inventory Totem, Hover Totem, Totem Offhand, Auto Double Hand) собираются, но в игре не проверялись. Hover Totem работает только в обычном инвентаре игрока.
 - **Free Cam** не блокирует клики: атака и использование предметов идут из позиции игрока, а не камеры.
 - **XP Macro** не наводится: смотрите туда, куда должны упасть бутылки.
 - **Key Pearl** не проверяет, что в Totem Slot лежит тотем: просто переключается на этот слот.

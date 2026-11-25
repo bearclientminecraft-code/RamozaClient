@@ -75,7 +75,7 @@ public final class GuiRoot {
                 panel.add(new GuiSettingsSection(core.settings));
             }
             for (ClientModule m : core.modules.in(c)) panel.add(new ModuleRow(m));
-            if (!panel.isEmpty()) panels.add(panel); // categories without modules are not drawn
+            panels.add(panel); // all categories are shown; empty ones get a placeholder
         }
         panelX = new float[panels.size()];
 
@@ -267,6 +267,11 @@ public final class GuiRoot {
 
     public boolean mouseClicked(double rx, double ry, int button) {
         if (closing) return true;
+        KeybindButton capturingKey = ctx.focus.capturing();
+        if (capturingKey != null && button >= 1) { // RMB / MMB / side buttons bind; LMB still cancels via the button
+            capturingKey.accept(ctx, Keys.mouse(button));
+            return true;
+        }
         mapMouse(rx, ry);
         double mx = ctx.mx;
         double my = ctx.my;

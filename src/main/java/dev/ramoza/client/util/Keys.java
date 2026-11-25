@@ -27,10 +27,26 @@ public final class Keys {
     public static final int RIGHT_ALT = 346;
     public static final int F = 70;
 
+    /** Mouse buttons are stored as MOUSE_BASE + GLFW button (0 = left, 1 = right, 2 = middle, 3+ = side). */
+    public static final int MOUSE_BASE = 1000;
+    public static final int MOUSE_LAST = MOUSE_BASE + 7;
+
     private Keys() {}
+
+    public static boolean isMouse(int code) { return code >= MOUSE_BASE && code <= MOUSE_LAST; }
+
+    public static int mouse(int button) { return MOUSE_BASE + button; }
 
     public static String nameOf(int key) {
         if (key == NONE) return "None";
+        if (isMouse(key)) {
+            switch (key - MOUSE_BASE) {
+                case 0: return "LMB";
+                case 1: return "RMB";
+                case 2: return "MMB";
+                default: return "Mouse " + (key - MOUSE_BASE + 1);
+            }
+        }
         if (key >= 48 && key <= 57) return String.valueOf((char) key);
         if (key >= 65 && key <= 90) return String.valueOf((char) key);
         if (key >= 290 && key <= 301) return "F" + (key - 289);

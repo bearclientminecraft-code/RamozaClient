@@ -3,6 +3,8 @@ package dev.ramoza.client.module.combat;
 import dev.ramoza.client.mixin.MinecraftClientAccessor;
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.MacroModule;
+import dev.ramoza.client.setting.BoolSetting;
+import dev.ramoza.client.setting.ModeSetting;
 import dev.ramoza.client.setting.NumberSetting;
 import dev.ramoza.client.util.MacroState;
 import dev.ramoza.client.util.PlayerActions;
@@ -19,6 +21,11 @@ public final class LungeSwap extends MacroModule {
     private final NumberSetting spearSlot = add(new NumberSetting("Spear Slot",
             "Hotbar slot (1-9) with the spear", 3, 1, 9, 1));
 
+    private final ModeSetting mode = add(new ModeSetting("Mode",
+            "Press: one lunge per key press. Hold: keeps lunging every tick while the key is held", "Press", "Press", "Hold"));
+    private final BoolSetting noDelay = add(new BoolSetting("No Lunge Delay",
+            "Ignore Delay / Random Delay / Humanize: swap, lunge and swap back in the same tick, and every key press fires at once", false));
+
     private final Runnable[] sequence = {this::lunge, this::restore};
 
     public LungeSwap() {
@@ -27,7 +34,16 @@ public final class LungeSwap extends MacroModule {
 
     @Override
     protected void tick(MinecraftClient mc) {
-        if (pressed() && !runner.running()) runner.start(sequence);
+        boolean hold = mode.get().equals("Hold");
+        boolean trigger = hold ? (activateKey.isBound() && gate()) : pressed();
+        if (!trigger) return;
+        if (noDelay.get()) {
+            runner.flush(); // finish a sequence left over from before the option was turned on
+            lunge();
+            restore();
+        } else if (!runner.running()) {
+            runner.start(sequence);
+        }
     }
 
     private void lunge() {

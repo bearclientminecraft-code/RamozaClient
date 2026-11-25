@@ -110,7 +110,7 @@ public final class CategoryPanel extends Component implements Focusable {
         for (PanelEntry e : entries) e.tickMatch(ctx.dt);
 
         headerH = m.headerH;
-        contentH = BODY_PAD * 2f;
+        contentH = BODY_PAD * 2f + (entries.isEmpty() ? 14f : 0f);
         for (PanelEntry e : entries) {
             float vh = e.visibleHeight(ctx);
             if (vh > 0.5f) contentH += vh + m.entryGap;
@@ -191,6 +191,9 @@ public final class CategoryPanel extends Component implements Focusable {
                 e.renderEntry(ctx, ex0, cy, ew, draw);
                 if (draw && mv < 0.999f) g.popAlpha();
                 cy += vh + m.entryGap;
+            }
+            if (entries.isEmpty()) {
+                g.textCenter("No modules yet", px + pw / 2f, bodyTop + BODY_PAD + 2f, ColorUtil.withAlpha(p.muted(), 0xA0));
             }
             ctx.popClip();
             g.popScissor();

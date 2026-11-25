@@ -35,7 +35,7 @@ public final class KeybindButton extends Control {
         if (hv > 0.01f) g.roundRect(x, y, w, h, m.radiusSmall, ColorUtil.mulAlpha(p.hover(), hv));
         g.textMid(label, x + m.pad, y, h, ColorUtil.mix(p.muted(), p.text(), Math.max(hv, capturing ? 1f : 0f)));
 
-        String text = capturing ? "Press a key..." : "[ " + Keys.nameOf(getter.getAsInt()) + " ]";
+        String text = capturing ? "Press key / mouse..." : "[ " + Keys.nameOf(getter.getAsInt()) + " ]";
         float bw = Math.max(40f, g.textWidth(text) + 10f);
         float bx = x + w - m.pad - bw;
         float by = y + 2f;

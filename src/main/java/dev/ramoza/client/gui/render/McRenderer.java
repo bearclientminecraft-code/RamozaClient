@@ -63,6 +63,11 @@ public final class McRenderer implements Renderer2D {
     }
 
     @Override
+    public float guiScale() {
+        return (float) net.minecraft.client.MinecraftClient.getInstance().getWindow().getScaleFactor();
+    }
+
+    @Override
     public int fontHeight() {
         return 9;
     }

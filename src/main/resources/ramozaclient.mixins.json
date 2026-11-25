@@ -6,6 +6,7 @@
   "client": [
     "CameraMixin",
     "EntityMixin",
+    "HandledScreenAccessor",
     "LivingEntityAccessor",
     "MinecraftClientMixin",
     "MinecraftClientAccessor",

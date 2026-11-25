@@ -22,6 +22,9 @@ public interface Renderer2D {
     /** Draws a square white-on-alpha texture assets/ramozaclient/textures/gui/{name}.png tinted with argb. */
     void drawTexture(String name, int x, int y, int size, int argb);
 
+    /** GUI pixel -> physical pixel factor (Minecraft GUI scale). 1 when unknown. */
+    default float guiScale() { return 1f; }
+
     int fontHeight();
 
     void pushScissor(int x, int y, int w, int h);

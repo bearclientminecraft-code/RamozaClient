@@ -9,11 +9,13 @@ import org.lwjgl.glfw.GLFW;
 public final class KeyInput {
     private KeyInput() {}
 
-    /** True while the GLFW key code is held. NONE and mouse buttons (codes below 32) are never "down". */
+    /** True while the GLFW key code is held. Also works for mouse buttons (Keys.MOUSE_BASE + button). NONE is never "down". */
     public static boolean isDown(int key) {
-        if (key < 32 || key > GLFW.GLFW_KEY_LAST) return false;
+        boolean mouse = Keys.isMouse(key);
+        if (!mouse && (key < 32 || key > GLFW.GLFW_KEY_LAST)) return false;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.getWindow() == null) return false;
+        if (mouse) return GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), key - Keys.MOUSE_BASE) == GLFW.GLFW_PRESS;
         return GLFW.glfwGetKey(mc.getWindow().getHandle(), key) == GLFW.GLFW_PRESS;
     }
 

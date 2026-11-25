@@ -24,6 +24,7 @@ public final class PearlCatch extends MacroModule {
 
     private final Runnable[] sequence = {this::throwPearl, this::throwCharge, this::restore};
     private int previousSlot;
+    private float lockedPitch;
 
     public PearlCatch() {
         super("Pearl Catch", "Key: throw a pearl, then a wind charge to launch yourself up", Category.PLAYER);
@@ -36,6 +37,7 @@ public final class PearlCatch extends MacroModule {
         if (!player.getInventory().getStack(slot(pearlSlot)).isOf(Items.ENDER_PEARL)) return;
         if (!player.getInventory().getStack(slot(windSlot)).isOf(Items.WIND_CHARGE)) return;
         previousSlot = PlayerActions.selectedSlot(player);
+        lockedPitch = player.getPitch();
         runner.start(sequence);
     }
 
@@ -43,7 +45,11 @@ public final class PearlCatch extends MacroModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
         PlayerActions.selectSlot(mc.player, slot(pearlSlot));
-        PlayerActions.use(mc, Hand.MAIN_HAND);
+        if (!PlayerActions.use(mc, Hand.MAIN_HAND)) {
+            // pearl was not thrown (cooldown, blocked use): do NOT fire the wind charge, just go back
+            runner.abort();
+            restore();
+        }
     }
 
     private void throwCharge() {
@@ -52,10 +58,9 @@ public final class PearlCatch extends MacroModule {
         if (player == null) return;
         PlayerActions.selectSlot(player, slot(windSlot));
         if (lookDown.get()) {
-            float pitch = player.getPitch();
             player.setPitch(90f);
             PlayerActions.use(mc, Hand.MAIN_HAND);
-            player.setPitch(pitch);
+            player.setPitch(lockedPitch); // pitch from the moment of the key press, not whatever the mouse did since
         } else {
             PlayerActions.use(mc, Hand.MAIN_HAND);
         }

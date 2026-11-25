@@ -217,8 +217,30 @@ public final class Gfx {
         antiAlias = old;
     }
 
+    /**
+     * Anti-aliased disc drawn on the PHYSICAL pixel grid: at GUI scale 3 one GUI pixel is 3x3 screen pixels,
+     * so a circle drawn in GUI pixels looks like squares. Here the matrix is scaled by 1/guiScale and every
+     * row is a span with exact fractional coverage (4 vertical samples per pixel row).
+     */
     public void circle(float cx, float cy, float radius, int color) {
-        roundRect(cx - radius, cy - radius, radius * 2f, radius * 2f, radius, color);
+        color = c(color);
+        if (ColorUtil.alpha(color) == 0 || radius <= 0f) return;
+        float s = Math.max(1f, r.guiScale());
+        float pcx = cx * s, pcy = cy * s, pr = radius * s;
+        int top = (int) Math.floor(pcy - pr);
+        int bottom = (int) Math.ceil(pcy + pr);
+        r.pushTransform(0f, 0f, 1f / s, 1f / s);
+        for (int y = top; y < bottom; y++) {
+            float sum = 0f;
+            for (int k = 0; k < 4; k++) {
+                float dy = (y + (k + 0.5f) / 4f) - pcy;
+                float d = pr * pr - dy * dy;
+                sum += d > 0f ? (float) Math.sqrt(d) : 0f;
+            }
+            float half = sum / 4f;
+            if (half > 0.01f) span(y, pcx - half, pcx + half, color, true, true);
+        }
+        r.popTransform();
     }
 
     // ------------------------------------------------------------ text

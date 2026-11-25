@@ -1,9 +1,14 @@
 package dev.ramoza.client.module;
 
+import dev.ramoza.client.module.combat.AutoDoubleHand;
+import dev.ramoza.client.module.combat.AutoInventoryTotem;
 import dev.ramoza.client.module.combat.AutoMace;
+import dev.ramoza.client.module.combat.HoverTotem;
 import dev.ramoza.client.module.combat.LungeSwap;
 import dev.ramoza.client.module.combat.MaceSwap;
 import dev.ramoza.client.module.combat.StunSlam;
+import dev.ramoza.client.module.combat.TotemOffhand;
+import dev.ramoza.client.module.combat.Trigger;
 import dev.ramoza.client.module.player.AutoRespawn;
 import dev.ramoza.client.module.player.ElytraSwap;
 import dev.ramoza.client.module.player.FastPlace;
@@ -53,10 +58,15 @@ public final class ModuleManager {
      * so adding a module to an empty category makes its panel appear automatically.
      */
     public void registerDefaults() {
+        register(new AutoDoubleHand());
+        register(new AutoInventoryTotem());
         register(new AutoMace());
+        register(new HoverTotem());
         register(new LungeSwap());
         register(new MaceSwap());
         register(new StunSlam());
+        register(new TotemOffhand());
+        register(new Trigger());
         register(new AutoRespawn());
         register(new ElytraSwap());
         register(new FastPlace());
