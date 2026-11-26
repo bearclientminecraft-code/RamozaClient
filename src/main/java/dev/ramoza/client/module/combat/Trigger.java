@@ -2,6 +2,7 @@ package dev.ramoza.client.module.combat;
 
 import dev.ramoza.client.RamozaClientMod;
 import dev.ramoza.client.core.RamozaCore;
+import dev.ramoza.client.hud.HudStats;
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.ClientModule;
 import dev.ramoza.client.setting.BoolSetting;
@@ -17,7 +18,9 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
@@ -71,6 +74,13 @@ public final class Trigger extends ClientModule {
     private static final int WEAPON_NONE = 0;
     private static final int WEAPON_SWORD = 1;
     private static final int WEAPON_AXE = 2;
+    private static final int WEAPON_MACE = 3;
+
+    /** Mace smash needs more than this many blocks of fall (vanilla MaceItem rule). */
+    private static final double MACE_MIN_FALL = 1.5;
+    /** TPS sync is skipped at or above this value (server is on time) and never assumes less than TPS_FLOOR. */
+    private static final double TPS_OK = 19.5;
+    private static final double TPS_FLOOR = 5.0;
 
     /** Enabled instance, cached so the per-frame hook needs no module lookup. Render thread only. */
     private static Trigger active;
@@ -86,7 +96,7 @@ public final class Trigger extends ClientModule {
 
     // ---- Weapon Settings
     private final BoolSetting weaponCheck = add(new BoolSetting("Weapon Check",
-            "Only trigger while a sword or an axe is in your main hand", true));
+            "Only trigger while a sword, an axe or a mace is in your main hand", true));
     private final NumberSetting swordMin = add(new NumberSetting("Sword Delay Min",
             "Shortest extra wait (ms) before a sword hit. If Min is above Max they are swapped", 0, 0, 1000, 5));
     private final NumberSetting swordMax = add(new NumberSetting("Sword Delay Max",
@@ -95,6 +105,19 @@ public final class Trigger extends ClientModule {
             "Shortest extra wait (ms) before an axe hit. If Min is above Max they are swapped", 0, 0, 1000, 5));
     private final NumberSetting axeMax = add(new NumberSetting("Axe Delay Max",
             "Longest extra wait (ms) before an axe hit. Each hit rolls a value between Min and Max", 80, 0, 1000, 5));
+
+    private final NumberSetting maceMin = add(new NumberSetting("Mace Delay Min",
+            "Shortest extra wait (ms) before a mace hit. If Min is above Max they are swapped", 0, 0, 1000, 5));
+    private final NumberSetting maceMax = add(new NumberSetting("Mace Delay Max",
+            "Longest extra wait (ms) before a mace hit. Each hit rolls a value between Min and Max", 60, 0, 1000, 5));
+
+    // ---- Criticals / server sync
+    private final BoolSetting onlyCriticals = add(new BoolSetting("Only Criticals",
+            "Hit only while the hit would be a critical: in the air, falling, not sprinting, not climbing or swimming, "
+            + "not blind, not riding. Mace: needs a smash fall (more than 1.5 blocks), not gliding. Waits instead of hitting on the ground", false));
+    private final BoolSetting tpsSync = add(new BoolSetting("TPS Sync",
+            "Cooldown Check follows the SERVER tick rate: when TPS drops below 20 the server recharges the weapon slower than "
+            + "your client shows, so the hit waits for that extra real time. Needs Cooldown Check, uses the watermark TPS estimate", true));
 
     // ---- Timing
     private final BoolSetting humanize = add(new BoolSetting("Humanize",
@@ -143,9 +166,13 @@ public final class Trigger extends ClientModule {
     private Entity pending;
     private ClientPlayerEntity lastPlayer;
     private boolean lastCrystal;
+    /** TPS sync: when our last attack left, and how long the client then needed to show a full cooldown. */
+    private long lastAttackNanos;
+    private double measuredCooldownMs;
+    private boolean measuring;
 
     public Trigger() {
-        super("Trigger Bot", "Automatically hits the entity under your crosshair with randomised timing", Category.COMBAT);
+        super("Trigger Bot", "Automatically hits the entity under your crosshair (sword, axe, mace) with randomised timing", Category.COMBAT);
     }
 
     /** Called once per rendered frame by the client mixin. */
@@ -181,6 +208,9 @@ public final class Trigger extends ClientModule {
         drop();
         armed = false;
         lastPlayer = null;
+        lastAttackNanos = 0L;
+        measuredCooldownMs = 0.0;
+        measuring = false;
     }
 
     /** Forget the current target and any queued hit. */
@@ -204,12 +234,45 @@ public final class Trigger extends ClientModule {
         ClientPlayerEntity player = mc.player;
         if (player == null || mc.world == null || mc.interactionManager == null || mc.currentScreen != null) return;
         if (player.isUsingItem()) return;
-        if (!crystalMode() && cooldownCheck.get() && player.getAttackCooldownProgress(0.0f) < 1.0f) return;
+        if (!crystalMode() && !cooldownReady(player, System.nanoTime())) return;
+        // the player may have landed / started sprinting since the frame that queued this hit
+        if (onlyCriticals.get() && !critReady(player, weaponOf(player))) return;
 
         EntityHitResult hit = validTarget(mc, player);
         if (hit == null || hit.getEntity() != target) return;
 
+        strike(mc, target);
+    }
+
+    /** Sends the attack and starts the TPS-sync measurement (attack -> client shows a full cooldown). */
+    private void strike(MinecraftClient mc, Entity target) {
         PlayerActions.attack(mc, target);
+        lastAttackNanos = System.nanoTime();
+        measuredCooldownMs = 0.0;
+        measuring = true;
+    }
+
+    /**
+     * Weapon cooldown is full. With TPS Sync the hit also waits until the SERVER has had enough ticks: the client
+     * needed {@code measuredCooldownMs} real time to recharge, a server running at {@code tps} needs that times 20/tps.
+     */
+    private boolean cooldownReady(ClientPlayerEntity player, long nowNanos) {
+        if (!cooldownCheck.get()) return true;
+        if (player.getAttackCooldownProgress(0.0f) < 1.0f) return false;
+        if (!tpsSync.get() || measuring || measuredCooldownMs <= 0.0 || lastAttackNanos == 0L) return true;
+        double tps = HudStats.tps();
+        if (Double.isNaN(tps) || tps >= TPS_OK) return true;
+        double neededMs = measuredCooldownMs * (20.0 / Math.max(tps, TPS_FLOOR));
+        return (nowNanos - lastAttackNanos) / 1_000_000.0 >= neededMs;
+    }
+
+    /** True if a hit right now would be a critical (mace: a smash). Mirrors the vanilla conditions of PlayerEntity#attack. */
+    private boolean critReady(ClientPlayerEntity p, int weapon) {
+        if (p.isOnGround() || p.isClimbing() || p.isTouchingWater() || p.hasVehicle()) return false;
+        if (p.hasStatusEffect(StatusEffects.BLINDNESS) || p.isGliding()) return false;
+        double fall = PlayerActions.fallDistance(p);
+        if (weapon == WEAPON_MACE) return fall > MACE_MIN_FALL && !p.isSprinting();
+        return fall > 0.0 && !p.isSprinting();
     }
 
     private void update(MinecraftClient mc) {
@@ -228,6 +291,10 @@ public final class Trigger extends ClientModule {
         long now = System.nanoTime();
         double dt = lastNanos == 0L ? 0.0 : Math.min((now - lastNanos) / 1_000_000.0, MAX_FRAME_MS);
         lastNanos = now;
+        if (measuring && player.getAttackCooldownProgress(0.0f) >= 1.0f) {
+            measuredCooldownMs = (now - lastAttackNanos) / 1_000_000.0;
+            measuring = false;
+        }
         boolean crystal = crystalMode();
         if (crystal != lastCrystal) { // mode changed: start clean
             lastCrystal = crystal;
@@ -257,6 +324,7 @@ public final class Trigger extends ClientModule {
         if (crystal) {
             // fixed rhythm: the timer runs continuously, a hit is queued whenever it is due and a player is aimed at
             if (pending != null || waitMs > 0.0 || player.isUsingItem()) return;
+            if (onlyCriticals.get() && !critReady(player, weapon)) return;
             pending = hit.getEntity(); // sent at the start of the next tick, see onTick()
             double jitter = timingJitter.get();
             double next = timingMs.get() + (jitter > 0.0 ? ThreadLocalRandom.current().nextDouble(-jitter, jitter) : 0.0);
@@ -281,8 +349,12 @@ public final class Trigger extends ClientModule {
         if (pending != null) return;
 
         if (player.isUsingItem()) return;
-        boolean ready = !cooldownCheck.get() || player.getAttackCooldownProgress(0.0f) >= 1.0f;
-        if (!ready) {
+        if (!cooldownReady(player, now)) {
+            armed = false;
+            return;
+        }
+        // Only Criticals: no attack window opens until the hit would be a crit (the timers keep running meanwhile)
+        if (onlyCriticals.get() && !critReady(player, weapon)) {
             armed = false;
             return;
         }
@@ -303,7 +375,7 @@ public final class Trigger extends ClientModule {
             waitMs = human.delay(MIN_GAP_MEDIAN_MS, MIN_GAP_SIGMA, CLICK_LAG_DRIFT, CLICK_LAG_HESITATION);
             if (doHit) pending = target; // sent at the start of the next tick, see onTick()
         } else {
-            if (doHit) PlayerActions.attack(mc, target);
+            if (doHit) strike(mc, target);
             waitMs = rollDelay(weapon);
         }
     }
@@ -347,15 +419,18 @@ public final class Trigger extends ClientModule {
         ItemStack stack = player.getMainHandStack();
         if (stack.isIn(ItemTags.SWORDS)) return WEAPON_SWORD;
         if (stack.isIn(ItemTags.AXES)) return WEAPON_AXE;
+        if (stack.isOf(Items.MACE)) return WEAPON_MACE;
         return WEAPON_NONE;
     }
 
     private double weaponMin(int weapon) {
-        return weapon == WEAPON_SWORD ? swordMin.get() : weapon == WEAPON_AXE ? axeMin.get() : 0.0;
+        return weapon == WEAPON_SWORD ? swordMin.get() : weapon == WEAPON_AXE ? axeMin.get()
+                : weapon == WEAPON_MACE ? maceMin.get() : 0.0;
     }
 
     private double weaponMax(int weapon) {
-        return weapon == WEAPON_SWORD ? swordMax.get() : weapon == WEAPON_AXE ? axeMax.get() : 0.0;
+        return weapon == WEAPON_SWORD ? swordMax.get() : weapon == WEAPON_AXE ? axeMax.get()
+                : weapon == WEAPON_MACE ? maceMax.get() : 0.0;
     }
 
     /** Humanize: skewed reaction to a new target plus a skewed weapon extra. */
@@ -372,6 +447,7 @@ public final class Trigger extends ClientModule {
         if (jitter > 0.0) t += rng.nextDouble(-jitter, jitter);
         if (weapon == WEAPON_SWORD) t += between(swordMin.get(), swordMax.get(), rng);
         else if (weapon == WEAPON_AXE) t += between(axeMin.get(), axeMax.get(), rng);
+        else if (weapon == WEAPON_MACE) t += between(maceMin.get(), maceMax.get(), rng);
         return Math.max(0.0, t);
     }
 
