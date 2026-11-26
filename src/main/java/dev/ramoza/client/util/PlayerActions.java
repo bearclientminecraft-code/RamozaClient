@@ -6,7 +6,12 @@ import net.minecraft.entity.Entity;
 import net.minecraft.item.Item;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.text.Text;
 
 /** Small helpers for hotbar switching and item use, so modules share one place that touches these APIs. */
 public final class PlayerActions {
@@ -65,5 +70,29 @@ public final class PlayerActions {
     public static int findAnywhere(ClientPlayerEntity player, Item item) {
         for (int i = 0; i < 36; i++) if (player.getInventory().getStack(i).isOf(item)) return i;
         return -1;
+    }
+
+    /** Right click on a block with the item in {@code hand}, like vanilla. True if the game accepted it. */
+    public static boolean useOnBlock(MinecraftClient mc, Hand hand, BlockHitResult hit) {
+        ActionResult result = mc.interactionManager.interactBlock(mc.player, hand, hit);
+        if (!result.isAccepted()) return false;
+        mc.player.swingHand(hand);
+        return true;
+    }
+
+    /** A click on the top face of a block, at its centre. */
+    public static BlockHitResult topOf(BlockPos pos) {
+        return new BlockHitResult(Vec3d.ofCenter(pos).add(0.0, 0.5, 0.0), Direction.UP, pos, false);
+    }
+
+    /** The block under the crosshair, or null when the crosshair is not on a block. */
+    public static BlockHitResult targetedBlock(MinecraftClient mc) {
+        return mc.crosshairTarget instanceof BlockHitResult hit && hit.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK
+                ? hit : null;
+    }
+
+    /** Short message above the hotbar (why a macro did not start). */
+    public static void hint(ClientPlayerEntity player, String text) {
+        player.sendMessage(Text.literal(text), true);
     }
 }

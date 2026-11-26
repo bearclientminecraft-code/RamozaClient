@@ -1,6 +1,7 @@
 package dev.ramoza.client.mixin;
 
 import dev.ramoza.client.module.combat.MaceSwap;
+import dev.ramoza.client.module.combat.ShieldBreaker;
 import dev.ramoza.client.module.combat.StunSlam;
 import dev.ramoza.client.module.combat.Trigger;
 import dev.ramoza.client.util.MacroState;
@@ -18,6 +19,10 @@ public abstract class MinecraftClientMixin {
     private void ramoza$onAttack(CallbackInfoReturnable<Boolean> cir) {
         if (MacroState.syntheticAttack) return;
         if (StunSlam.handleAttack()) {
+            cir.setReturnValue(true);
+            return;
+        }
+        if (ShieldBreaker.handleAttack()) {
             cir.setReturnValue(true);
             return;
         }

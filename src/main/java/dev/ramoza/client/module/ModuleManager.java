@@ -1,6 +1,12 @@
 package dev.ramoza.client.module;
 
+import dev.ramoza.client.module.combat.AnchorMacro;
+import dev.ramoza.client.module.combat.AnchorPearl;
+import dev.ramoza.client.module.combat.AutoCrystal;
 import dev.ramoza.client.module.combat.AutoDoubleHand;
+import dev.ramoza.client.module.combat.AutoHitCrystal;
+import dev.ramoza.client.module.combat.DoubleAnchor;
+import dev.ramoza.client.module.combat.ShieldBreaker;
 import dev.ramoza.client.module.combat.AutoInventoryTotem;
 import dev.ramoza.client.module.combat.AutoMace;
 import dev.ramoza.client.module.combat.HoverTotem;
@@ -58,6 +64,12 @@ public final class ModuleManager {
      * so adding a module to an empty category makes its panel appear automatically.
      */
     public void registerDefaults() {
+        register(new AnchorMacro());
+        register(new AnchorPearl());
+        register(new AutoCrystal());
+        register(new AutoHitCrystal());
+        register(new DoubleAnchor());
+        register(new ShieldBreaker());
         register(new AutoDoubleHand());
         register(new AutoInventoryTotem());
         register(new AutoMace());

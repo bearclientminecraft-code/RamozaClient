@@ -20,12 +20,13 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Trigger: attacks the living entity under the crosshair once a (randomised) delay has passed.
+ * Trigger Bot: attacks the living entity under the crosshair once a (randomised) delay has passed.
  * <p>
  * Decisions are made once per rendered FRAME (see {@code MinecraftClientMixin}); all timing is
  * delta-time based ({@link System#nanoTime()}), so behaviour does not depend on the frame rate.
@@ -118,6 +119,9 @@ public final class Trigger extends ClientModule {
             "Closest distance (blocks, eyes to hit point) at which the trigger may fire", 0, 0, 6, 0.1));
     private final NumberSetting rangeMax = add(new NumberSetting("Range Max",
             "Farthest distance (blocks) at which the trigger may fire. Vanilla reach is about 3", 3, 0, 6, 0.1));
+    private final NumberSetting edgeMargin = add(new NumberSetting("Edge Margin",
+            "The crosshair must be this many blocks inside the target's hitbox. Other players are drawn slightly behind "
+            + "their real server position, so hits on the very edge swing at nothing. 0 = off", 0.1, 0, 0.25, 0.01));
     private final NumberSetting hitChance = add(new NumberSetting("Hit Chance",
             "Chance (%) that an attack window ends in a hit. 100 = every window, 0 = never. Humanize ON: misses come in streaks", 100, 0, 100, 1));
 
@@ -141,7 +145,7 @@ public final class Trigger extends ClientModule {
     private boolean lastCrystal;
 
     public Trigger() {
-        super("Trigger", "Automatically hits the entity under your crosshair with randomised timing", Category.COMBAT);
+        super("Trigger Bot", "Automatically hits the entity under your crosshair with randomised timing", Category.COMBAT);
     }
 
     /** Called once per rendered frame by the client mixin. */
@@ -200,7 +204,7 @@ public final class Trigger extends ClientModule {
         ClientPlayerEntity player = mc.player;
         if (player == null || mc.world == null || mc.interactionManager == null || mc.currentScreen != null) return;
         if (player.isUsingItem()) return;
-        if (!crystalMode() && cooldownCheck.get() && player.getAttackCooldownProgress(0.5f) < 1.0f) return;
+        if (!crystalMode() && cooldownCheck.get() && player.getAttackCooldownProgress(0.0f) < 1.0f) return;
 
         EntityHitResult hit = validTarget(mc, player);
         if (hit == null || hit.getEntity() != target) return;
@@ -277,7 +281,7 @@ public final class Trigger extends ClientModule {
         if (pending != null) return;
 
         if (player.isUsingItem()) return;
-        boolean ready = !cooldownCheck.get() || player.getAttackCooldownProgress(0.5f) >= 1.0f;
+        boolean ready = !cooldownCheck.get() || player.getAttackCooldownProgress(0.0f) >= 1.0f;
         if (!ready) {
             armed = false;
             return;
@@ -322,7 +326,21 @@ public final class Trigger extends ClientModule {
         double b = rangeMax.get();
         double lo = Math.min(a, b);
         double hi = Math.max(a, b);
-        return d2 >= lo * lo && d2 <= hi * hi ? hit : null;
+        if (d2 < lo * lo || d2 > hi * hi) return null;
+        return aimedInside(player, e) ? hit : null;
+    }
+
+    /** True if the look line passes at least Edge Margin blocks inside the target's hitbox (current tick position). */
+    private boolean aimedInside(ClientPlayerEntity player, Entity e) {
+        double m = edgeMargin.get();
+        if (m <= 0.0) return true;
+        Box box = e.getBoundingBox();
+        // never shrink more than 40% of a side, so small entities keep a usable box
+        Box inner = box.expand(-Math.min(m, box.getLengthX() * 0.4), -Math.min(m, box.getLengthY() * 0.4),
+                -Math.min(m, box.getLengthZ() * 0.4));
+        Vec3d eye = player.getEyePos();
+        Vec3d end = eye.add(player.getRotationVec(1.0f).multiply(Math.max(rangeMax.get(), 0.0) + 1.0));
+        return inner.contains(eye) || inner.raycast(eye, end).isPresent();
     }
 
     private int weaponOf(ClientPlayerEntity player) {

@@ -11,6 +11,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +35,12 @@ public final class AutoMace extends MacroModule {
             "Blocks you must have fallen before the hit (mace smash needs more than 1.5)", 1.5, 0, 20, 0.1));
     private final BoolSetting preEquip = add(new BoolSetting("Pre-Equip",
             "Take the mace out as soon as a living target is below you, so the attack cooldown can recharge before the hit", true));
+
+    private final NumberSetting aimTolerance = add(new NumberSetting("Aim Tolerance",
+            "If the crosshair is not exactly on a target, a living entity whose hitbox (grown by this many blocks) is on your "
+            + "look line within reach is still hit. 0 = crosshair only", 0.3, 0, 1, 0.05));
+
+    private static final double REACH = 3.0;
 
     private final Runnable[] restoreSequence = {this::restore};
     private final Map<Integer, Boolean> rolls = new HashMap<>();
@@ -67,14 +74,19 @@ public final class AutoMace extends MacroModule {
             if (!runner.running()) restore();
             return;
         }
+        if (player.getVelocity().y > 0) {
+            // rising again (wind charge, bounce, jump): a new fall starts, so the previous fall's lock must not stay
+            hitThisFall = false;
+            rolls.clear();
+        }
         if (hitThisFall || runner.running() || !gate()) return;
         if (player.getVelocity().y >= 0 || PlayerActions.fallDistance(player) <= minFall.get()) return;
 
         int mace = PlayerActions.findInHotbar(player, Items.MACE);
         if (mace < 0) return;
 
-        Entity under = PlayerActions.targetedEntity(mc);
-        boolean hasTarget = under instanceof LivingEntity living && living.isAlive();
+        Entity under = findTarget(mc, player);
+        boolean hasTarget = under != null;
 
         if (preEquip.get() && PlayerActions.selectedSlot(player) != mace && (hasTarget || targetBelow(mc, player))) {
             equip(player, mace);
@@ -90,6 +102,32 @@ public final class AutoMace extends MacroModule {
         PlayerActions.attack(mc, under);
         hitThisFall = true;
         runner.startDelayed(restoreSequence); // slot goes back on a later tick, never in the attack tick
+    }
+
+    /** Crosshair entity first; otherwise the nearest living entity on the look line (hitbox grown by Aim Tolerance). */
+    private Entity findTarget(MinecraftClient mc, ClientPlayerEntity player) {
+        Entity c = PlayerActions.targetedEntity(mc);
+        if (c instanceof LivingEntity l && l.isAlive() && !l.isSpectator()) return c;
+        double tol = aimTolerance.get();
+        if (tol <= 0.0 || mc.world == null) return null;
+
+        Vec3d eye = player.getEyePos();
+        Vec3d end = eye.add(player.getRotationVec(1.0f).multiply(REACH));
+        Box search = new Box(eye, end).expand(tol + 0.5);
+        Entity best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (LivingEntity e : mc.world.getEntitiesByClass(LivingEntity.class, search,
+                x -> x != player && x.isAlive() && !x.isSpectator())) {
+            Box box = e.getBoundingBox().expand(tol);
+            Vec3d hit = box.contains(eye) ? eye : box.raycast(eye, end).orElse(null);
+            if (hit == null) continue;
+            double d = hit.squaredDistanceTo(eye);
+            if (d < bestDist) {
+                bestDist = d;
+                best = e;
+            }
+        }
+        return best;
     }
 
     private void equip(ClientPlayerEntity player, int mace) {

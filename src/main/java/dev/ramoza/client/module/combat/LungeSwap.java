@@ -27,23 +27,41 @@ public final class LungeSwap extends MacroModule {
             "Ignore Delay / Random Delay / Humanize: swap, lunge and swap back in the same tick, and every key press fires at once", false));
 
     private final Runnable[] sequence = {this::lunge, this::restore};
+    private boolean queuedPress;
 
     public LungeSwap() {
         super("Lunge Swap", "Key: switch to spear, lunge, switch back to the hand slot", Category.COMBAT);
     }
 
     @Override
+    protected void onEnable() {
+        super.onEnable();
+        queuedPress = false;
+    }
+
+    @Override
     protected void tick(MinecraftClient mc) {
         boolean hold = mode.get().equals("Hold");
-        boolean trigger = hold ? (activateKey.isBound() && gate()) : pressed();
-        if (!trigger) return;
         if (noDelay.get()) {
+            queuedPress = false;
+            boolean trigger = hold ? (activateKey.isBound() && gate()) : pressed();
+            if (!trigger) return;
             runner.flush(); // finish a sequence left over from before the option was turned on
             lunge();
             restore();
-        } else if (!runner.running()) {
-            runner.start(sequence);
+            return;
         }
+
+        // Delayed mode: the spear is held for a few ticks, and every slot change resets the attack cooldown.
+        // A jab with a recharging cooldown does not lunge, so a new cycle starts only once it is full again
+        // (Press mode remembers a press made meanwhile and fires it as soon as that is the case).
+        if (hold) queuedPress = false;
+        else if (pressed()) queuedPress = true;
+        boolean want = hold ? (activateKey.isBound() && gate()) : queuedPress;
+        if (!want || runner.running()) return;
+        if (mc.player.getAttackCooldownProgress(0.0f) < 1.0f) return;
+        queuedPress = false;
+        runner.start(sequence);
     }
 
     private void lunge() {
