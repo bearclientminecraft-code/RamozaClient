@@ -41,6 +41,9 @@ public final class ConfigManager {
         s.showTooltips = Boolean.parseBoolean(p.getProperty("gui.showTooltips", Boolean.toString(s.showTooltips)));
         s.compactMode = Boolean.parseBoolean(p.getProperty("gui.compactMode", Boolean.toString(s.compactMode)));
 
+        s.hudX = MathUtil.clamp(f(p, "hud.watermark.x", s.hudX), 0f, 1f);
+        s.hudY = MathUtil.clamp(f(p, "hud.watermark.y", s.hudY), 0f, 1f);
+
         core.themes.setTheme((int) f(p, "gui.theme", core.themes.themeIndex()));
         try {
             core.themes.setAppearance(Appearance.valueOf(p.getProperty("gui.appearance", core.themes.appearance().name())));
@@ -75,6 +78,8 @@ public final class ConfigManager {
         p.setProperty("gui.blur", Boolean.toString(s.blur));
         p.setProperty("gui.showTooltips", Boolean.toString(s.showTooltips));
         p.setProperty("gui.compactMode", Boolean.toString(s.compactMode));
+        p.setProperty("hud.watermark.x", Float.toString(s.hudX));
+        p.setProperty("hud.watermark.y", Float.toString(s.hudY));
         p.setProperty("gui.theme", Integer.toString(core.themes.themeIndex()));
         p.setProperty("gui.appearance", core.themes.appearance().name());
 

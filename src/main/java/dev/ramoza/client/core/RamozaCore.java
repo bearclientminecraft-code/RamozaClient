@@ -3,6 +3,7 @@ package dev.ramoza.client.core;
 import dev.ramoza.client.config.ConfigManager;
 import dev.ramoza.client.config.GuiSettings;
 import dev.ramoza.client.gui.theme.ThemeManager;
+import dev.ramoza.client.hud.WatermarkHud;
 import dev.ramoza.client.module.ModuleManager;
 
 import java.nio.file.Path;
@@ -15,6 +16,7 @@ public final class RamozaCore {
     public final GuiSettings settings = new GuiSettings();
     public final ThemeManager themes = new ThemeManager(settings);
     public final ModuleManager modules = new ModuleManager();
+    public final WatermarkHud watermark = new WatermarkHud(this);
     private final ConfigManager config;
 
     /** "Self Destruct" (GUI prototype): while true the GUI refuses to open. Not persisted. */

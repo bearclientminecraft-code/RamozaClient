@@ -2,7 +2,9 @@ package dev.ramoza.client.module.combat;
 
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.MacroModule;
+import dev.ramoza.client.setting.ModeSetting;
 import dev.ramoza.client.setting.NumberSetting;
+import dev.ramoza.client.util.AnchorAim;
 import dev.ramoza.client.util.PlayerActions;
 import dev.ramoza.client.util.TotemUtil;
 import net.minecraft.block.Blocks;
@@ -21,8 +23,12 @@ import net.minecraft.world.World;
  * Activate Key (press), aiming at a block: places a respawn anchor on the face you look at, charges it with
  * glowstone, switches to the Totem Slot and right-clicks it (that is what makes it explode), then returns to your slot.
  * If you already look at an anchor, the placing step is skipped. Does nothing in the Nether (anchors do not explode there).
+ * <p>
+ * Mode: Silent clicks the blocks chosen at the start even if you look away. Legit clicks only where you really look
+ * (live ray at every step) and stops, returning your slot, as soon as you look away from the expected block.
  */
 public final class AnchorPearl extends MacroModule {
+    private final ModeSetting mode = add(AnchorAim.modeSetting());
     private final NumberSetting anchorSlot = add(new NumberSetting("Anchor Slot",
             "Hotbar slot (1-9) with respawn anchors", 1, 1, 9, 1));
     private final NumberSetting glowstoneSlot = add(new NumberSetting("GlowStone Slot",
@@ -56,27 +62,12 @@ public final class AnchorPearl extends MacroModule {
         ClientPlayerEntity player = mc.player;
         BlockHitResult hit = PlayerActions.targetedBlock(mc);
         if (hit == null) return;
-        if (mc.world.getRegistryKey() == World.NETHER) {
-            PlayerActions.hint(player, "Anchor Pearl: anchors do not explode in the Nether");
-            return;
-        }
+        if (mc.world.getRegistryKey() == World.NETHER) return; // anchors do not explode in the Nether
         boolean isAnchor = mc.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR);
-        if (!isAnchor && !player.getInventory().getStack(TotemUtil.hotbarIndex(anchorSlot)).isOf(Items.RESPAWN_ANCHOR)) {
-            PlayerActions.hint(player, "Anchor Pearl: no respawn anchor in the Anchor Slot");
-            return;
-        }
-        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(glowstoneSlot)).isOf(Items.GLOWSTONE)) {
-            PlayerActions.hint(player, "Anchor Pearl: no glowstone in the GlowStone Slot");
-            return;
-        }
-        if (!TotemUtil.isTotem(player.getInventory().getStack(TotemUtil.hotbarIndex(totemSlot)))) {
-            PlayerActions.hint(player, "Anchor Pearl: no totem in the Totem Slot");
-            return;
-        }
-        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(pearlSlot)).isOf(Items.ENDER_PEARL)) {
-            PlayerActions.hint(player, "Anchor Pearl: no ender pearl in the Pearl Slot");
-            return;
-        }
+        if (!isAnchor && !player.getInventory().getStack(TotemUtil.hotbarIndex(anchorSlot)).isOf(Items.RESPAWN_ANCHOR)) return;
+        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(glowstoneSlot)).isOf(Items.GLOWSTONE)) return;
+        if (!TotemUtil.isTotem(player.getInventory().getStack(TotemUtil.hotbarIndex(totemSlot)))) return;
+        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(pearlSlot)).isOf(Items.ENDER_PEARL)) return;
         if (isAnchor) {
             anchorPos = hit.getBlockPos();
         } else {
@@ -88,25 +79,46 @@ public final class AnchorPearl extends MacroModule {
         runner.start(isAnchor ? existing : full);
     }
 
+    /** Silent: the stored click. Legit: the live ray on the stored block and face (null = looking away). */
+    private BlockHitResult placeClick(MinecraftClient mc) {
+        return AnchorAim.isLegit(mode) ? AnchorAim.looking(mc, base.getBlockPos(), base.getSide()) : base;
+    }
+
+    /** Silent: top face of the anchor. Legit: the live ray on the anchor (null = looking away). */
+    private BlockHitResult anchorClick(MinecraftClient mc) {
+        return AnchorAim.isLegit(mode) ? AnchorAim.looking(mc, anchorPos) : PlayerActions.topOf(anchorPos);
+    }
+
+    private void cancel() {
+        runner.abort();
+        restore();
+    }
+
     private void place() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || base == null) return;
+        BlockHitResult click = placeClick(mc);
+        if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(anchorSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, base);
+        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
     }
 
     private void charge() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || anchorPos == null) return;
+        BlockHitResult click = anchorClick(mc);
+        if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(glowstoneSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, PlayerActions.topOf(anchorPos));
+        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
     }
 
     private void explode() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || anchorPos == null) return;
+        BlockHitResult click = anchorClick(mc);
+        if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(totemSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, PlayerActions.topOf(anchorPos));
+        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
     }
 
     private void pearl() {

@@ -169,6 +169,86 @@ public final class Icons {
             "X.."
     };
 
+    // ---- HUD (watermark) icons: 1 px outline, 'X' = filled. Width/height come from the strings.
+
+    public static final String[] HUD_USER = {
+            "..XXX..",
+            ".X...X.",
+            ".X...X.",
+            "..XXX..",
+            ".......",
+            ".XXXXX.",
+            "X.....X",
+            "X.....X"
+    };
+
+    public static final String[] HUD_MONITOR = {
+            "XXXXXXX",
+            "X.....X",
+            "X.....X",
+            "X.....X",
+            "XXXXXXX",
+            "..XXX..",
+            ".XXXXX."
+    };
+
+    public static final String[] HUD_WIFI = {
+            ".XXXXX.",
+            "X.....X",
+            "..XXX..",
+            ".X...X.",
+            "...X..."
+    };
+
+    public static final String[] HUD_CLOCK = {
+            ".XXXXX.",
+            "X..X..X",
+            "X..X..X",
+            "X..XX.X",
+            "X.....X",
+            "X.....X",
+            ".XXXXX."
+    };
+
+    public static final String[] HUD_PIN = {
+            "..XXX..",
+            ".X...X.",
+            "X.....X",
+            "X..X..X",
+            ".X...X.",
+            ".X...X.",
+            "..X.X..",
+            "...X..."
+    };
+
+    public static final String[] HUD_SIGNAL = {
+            "......X",
+            "......X",
+            "....X.X",
+            "....X.X",
+            "..X.X.X",
+            "..X.X.X",
+            "X.X.X.X"
+    };
+
+    public static final String[] HUD_SPEED = {
+            ".XXXXX.",
+            "X.....X",
+            "X...X.X",
+            "X..X..X",
+            "X.X...X",
+            ".XXXXX."
+    };
+
+    public static final String[] HUD_SERVER = {
+            "XXXXXXX",
+            "X.X...X",
+            "XXXXXXX",
+            "XXXXXXX",
+            "X.X...X",
+            "XXXXXXX"
+    };
+
     public static String[] forCategory(Category c) {
         switch (c) {
             case COMBAT: return SHIELD;

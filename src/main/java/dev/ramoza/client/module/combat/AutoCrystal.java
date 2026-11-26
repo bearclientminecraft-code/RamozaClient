@@ -2,6 +2,7 @@ package dev.ramoza.client.module.combat;
 
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.MacroModule;
+import dev.ramoza.client.setting.BoolSetting;
 import dev.ramoza.client.setting.NumberSetting;
 import dev.ramoza.client.util.PlayerActions;
 import dev.ramoza.client.util.TotemUtil;
@@ -16,13 +17,16 @@ import net.minecraft.util.math.BlockPos;
 
 /**
  * Activate Key (press), aiming at a block: places obsidian on the face you look at, then an end crystal on top of
- * it, then goes back to the slot you were on. If you look at obsidian / bedrock, only the crystal is placed.
+ * it, then goes back to the slot you were on (unless Return is off). If you look at obsidian / bedrock, only the crystal is placed.
  */
 public final class AutoCrystal extends MacroModule {
     private final NumberSetting obsidianSlot = add(new NumberSetting("Obsidian Slot",
             "Hotbar slot (1-9) with obsidian", 1, 1, 9, 1));
     private final NumberSetting crystalSlot = add(new NumberSetting("Crystal Slot",
             "Hotbar slot (1-9) with end crystals", 2, 1, 9, 1));
+
+    private final BoolSetting returnSlot = add(new BoolSetting("Return",
+            "Switch back to the slot you were on after placing. Off = stay on the last used slot", true));
 
     private final Runnable[] full = {this::placeObsidian, this::placeCrystal, this::restore};
     private final Runnable[] crystalOnly = {this::placeCrystal, this::restore};
@@ -52,17 +56,11 @@ public final class AutoCrystal extends MacroModule {
         boolean solidBase = state.isOf(Blocks.OBSIDIAN) || state.isOf(Blocks.BEDROCK);
         int crystal = TotemUtil.hotbarIndex(crystalSlot);
         int obsidian = TotemUtil.hotbarIndex(obsidianSlot);
-        if (!player.getInventory().getStack(crystal).isOf(Items.END_CRYSTAL)) {
-            PlayerActions.hint(player, "Auto Crystal: no end crystal in the Crystal Slot");
-            return;
-        }
+        if (!player.getInventory().getStack(crystal).isOf(Items.END_CRYSTAL)) return;
         if (solidBase) {
             obsidianPos = hit.getBlockPos();
         } else {
-            if (!player.getInventory().getStack(obsidian).isOf(Items.OBSIDIAN)) {
-                PlayerActions.hint(player, "Auto Crystal: no obsidian in the Obsidian Slot");
-                return;
-            }
+            if (!player.getInventory().getStack(obsidian).isOf(Items.OBSIDIAN)) return;
             obsidianPos = hit.getBlockPos().offset(hit.getSide());
             if (!mc.world.getBlockState(obsidianPos).isReplaceable()) return;
         }
@@ -87,7 +85,7 @@ public final class AutoCrystal extends MacroModule {
 
     private void restore() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player != null && base != null) PlayerActions.selectSlot(mc.player, previousSlot);
+        if (returnSlot.get() && mc.player != null && base != null) PlayerActions.selectSlot(mc.player, previousSlot);
         base = null;
         obsidianPos = null;
     }

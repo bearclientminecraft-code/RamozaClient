@@ -17,6 +17,7 @@ public final class RamozaScreen extends Screen {
     private final RamozaCore core;
     private final IntSupplier openKey;
     private final McRenderer renderer = new McRenderer();
+    private final Gfx gfx = new Gfx(renderer);
     private final GuiRoot root;
     private long lastNanos;
 
@@ -25,7 +26,7 @@ public final class RamozaScreen extends Screen {
         super(Text.literal("Ramoza"));
         this.core = core;
         this.openKey = openKey;
-        this.root = new GuiRoot(core, new Gfx(renderer));
+        this.root = new GuiRoot(core, gfx);
         this.root.setOnClosed(() -> {
             if (this.client != null) this.client.setScreen(null);
         });
@@ -39,6 +40,9 @@ public final class RamozaScreen extends Screen {
 
         renderer.begin(context, this.textRenderer);
         root.render(this.width, this.height, mouseX, mouseY, dt);
+
+        // the watermark is drawn on top of the GUI backdrop so it can be seen and dragged
+        if (!core.isGuiHidden()) core.watermark.render(gfx, this.width, this.height, root.fade(), mouseX, mouseY);
     }
 
     /**
@@ -54,16 +58,25 @@ public final class RamozaScreen extends Screen {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
+        if (click.button() == 0 && !root.isClosing() && core.watermark.beginDrag(click.x(), click.y())) return true;
         return root.mouseClicked(click.x(), click.y(), click.button());
     }
 
     @Override
     public boolean mouseReleased(Click click) {
+        if (core.watermark.endDrag()) {
+            core.save();
+            return true;
+        }
         return root.mouseReleased(click.x(), click.y(), click.button());
     }
 
     @Override
     public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+        if (core.watermark.dragging()) {
+            core.watermark.drag(click.x(), click.y(), this.width, this.height);
+            return true;
+        }
         return root.mouseDragged(click.x(), click.y());
     }
 

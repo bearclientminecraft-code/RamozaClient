@@ -16,6 +16,7 @@ import dev.ramoza.client.module.combat.StunSlam;
 import dev.ramoza.client.module.combat.TotemOffhand;
 import dev.ramoza.client.module.combat.Trigger;
 import dev.ramoza.client.module.player.AutoRespawn;
+import dev.ramoza.client.module.render.Watermark;
 import dev.ramoza.client.module.player.ElytraSwap;
 import dev.ramoza.client.module.player.FastPlace;
 import dev.ramoza.client.module.player.FreeCam;
@@ -89,6 +90,7 @@ public final class ModuleManager {
         register(new PearlCatch());
         register(new Sprint());
         register(new XpMacro());
+        register(new Watermark());
     }
 
     /** Case-insensitive comparison where digit runs compare by value ("Mace 2" < "Mace 10"). */

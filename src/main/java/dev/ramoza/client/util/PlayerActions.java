@@ -11,7 +11,6 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.text.Text;
 
 /** Small helpers for hotbar switching and item use, so modules share one place that touches these APIs. */
 public final class PlayerActions {
@@ -91,8 +90,4 @@ public final class PlayerActions {
                 ? hit : null;
     }
 
-    /** Short message above the hotbar (why a macro did not start). */
-    public static void hint(ClientPlayerEntity player, String text) {
-        player.sendMessage(Text.literal(text), true);
-    }
 }

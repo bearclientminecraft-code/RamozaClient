@@ -1,7 +1,7 @@
 # RamozaClient
 
 Premium ClickGUI (только визуальная часть) для Minecraft **1.21.11**, Fabric, Java 21, Yarn.
-GUI-основа плюс модули категории Player: Auto Respawn, Fast Place, Free Cam, Key Pearl, No Jump Delay, No Push, Sprint, XP Macro. Категории без модулей (Render, Pot Cheats) в GUI не рисуются и появятся сами, как только в них зарегистрируют модуль.
+GUI-основа плюс модули категорий Player (Auto Respawn, Fast Place, Free Cam, Key Pearl, No Jump Delay, No Push, Sprint, XP Macro), Combat (Trigger Bot, Auto Mace, Lunge Swap, Stun Slam, Anchor Macro, Anchor Pearl, Double Anchor, Auto Crystal, Auto Hit Crystal, Shield Breaker, Totem) и Render (Watermark). Категории без модулей (Pot Cheats) в GUI не рисуются и появятся сами, как только в них зарегистрируют модуль.
 
 ## Статус (честно)
 
@@ -9,7 +9,7 @@ GUI-основа плюс модули категории Player: Auto Respawn, 
 |---|---|
 | Слой интерфейса (всё в `gui/`, кроме 3 адаптеров) | компилируется javac без предупреждений, прогнан headless: 36 проверок + фаззинг 6000 событий |
 | Адаптеры Minecraft (`McRenderer`, `RamozaScreen`, `RamozaClientMod`) | собираются против настоящего Minecraft 1.21.11 |
-| Модули Player и Combat (`module/player/`, `module/combat/`, `mixin/`) | компилируются против настоящего Minecraft 1.21.11; **работа модулей и Mixin в игре не проверялась** |
+| Модули Player, Combat, Render и HUD (`module/`, `hud/`, `mixin/`) | компилируются против настоящего Minecraft 1.21.11; **работа модулей, миксинов и HUD в игре не проверялась** |
 | `gradle build` | **проверен локально**: Fabric Loom 1.19.4, Gradle 9.9.2, JDK 25, class-файлы Java 21 |
 | Запуск в игре | **не проверялся** (в среде сборки нет клиента Minecraft) |
 
@@ -109,6 +109,16 @@ public final class MyModule extends ClientModule {
 
 Модули в каждой категории выводятся по алфавиту (без учёта регистра, числа по значению), порядок задаётся в `ModuleManager.in()`.
 Тик модулей: `ModuleManager.tick()` из `START_CLIENT_TICK`.
+
+## Последние изменения
+
+- **Auto Crystal**: настройка `Return` (вкл по умолчанию). Выключена: слот после установки не возвращается.
+- **Подсказки** над хотбаром («негде разместить» и т.п.) удалены из Auto Crystal, Anchor Macro, Anchor Pearl, Double Anchor (`PlayerActions.hint` убран). Отладочное сообщение Stun Slam (`Debug`, выкл по умолчанию) не трогалось.
+- **Anchor Macro, Anchor Pearl, Double Anchor**: настройка `Mode` = `Silent` (как раньше) или `Legit`. В Legit каждый клик идёт туда, куда вы реально смотрите (луч из глаз пересчитывается на каждом шаге), а если отвернулись, макрос останавливается и возвращает слот.
+- **Double Anchor**: новый `Second Spot = Beside` (по умолчанию). Причина «один взрыв на камне»: первый взрыв разрушает камень под якорем, второму некуда встать. Якорь взрывом не разрушается, поэтому второй якорь ставится сразу после первого, до зарядки и взрыва, рядом на любой блок-опору, затем оба заряжаются и взрываются. В Legit второй якорь ставится на блок, на который вы смотрите после первого взрыва (в пределах 3 блоков от первого).
+- **Watermark** (Render -> Watermark): два ряда пилюль, значок логотипа `R` шрифтом Blacksword. Переключатели Username, FPS, Logo, Ping, Time, Coords, TPS, BPS, Server; `Corner Rounding`, `Background Opacity`. Перетаскивается левой кнопкой мыши, пока открыт ClickGUI; позиция хранится в конфиге (`hud.watermark.x/y`).
+  - TPS это оценка по интервалу между пакетами времени сервера (раз в 20 тиков); до двух пакетов показывает `--`.
+  - Под сомнением: `HudRenderCallback` (в новых Fabric API помечен устаревшим, замена `HudElementRegistry`), имя метода `ClientPlayNetworkHandler.onWorldTimeUpdate` (у миксина `require = 0`, при несовпадении просто не будет TPS), `Entity.raycast(double, float, boolean)`, `PlayerListEntry.getLatency`.
 
 ## Известные ограничения
 

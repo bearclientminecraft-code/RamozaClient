@@ -23,6 +23,10 @@ public final class GuiSettings {
     public boolean showTooltips = true;
     public boolean compactMode = false;
 
+    /** Watermark position: centre X as a fraction of the screen width, top Y as a fraction of the height. */
+    public float hudX = 0.5f;
+    public float hudY = 0.012f;
+
     public float menuAlpha() { return menuOpacity / 100f; }
     public float textAlpha() { return textOpacity / 100f; }
     public float radiusPx() { return cornerRounding / 100f * MAX_RADIUS_PX; }
