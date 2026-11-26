@@ -2,6 +2,7 @@ package dev.ramoza.client.module.combat;
 
 import dev.ramoza.client.module.Category;
 import dev.ramoza.client.module.MacroModule;
+import dev.ramoza.client.setting.BoolSetting;
 import dev.ramoza.client.setting.ModeSetting;
 import dev.ramoza.client.setting.NumberSetting;
 import dev.ramoza.client.util.AnchorAim;
@@ -11,6 +12,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.item.Items;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -53,6 +55,10 @@ public final class DoubleAnchor extends MacroModule {
             "Beside: second anchor is placed next to the first before the explosion, works on any block. "
                     + "Same / Lower: after the first explosion, in its spot / one block below (needs the support to survive)",
             "Beside", "Beside", "Same", "Lower"));
+
+    private final BoolSetting debug = add(new BoolSetting("Debug",
+            "Shows above the hotbar why a press did nothing (missing item in a slot, no block targeted, ...) "
+                    + "and which step the game rejected", false));
 
     private final Runnable[] beside = {this::place, this::placeSecond, this::charge, this::chargeSecond,
             this::explode, this::explodeSecond, this::restore};
@@ -140,14 +146,32 @@ public final class DoubleAnchor extends MacroModule {
     private void start(MinecraftClient mc, ClientPlayerEntity player) {
         if (!pressed() || mc.currentScreen != null) return;
         BlockHitResult hit = PlayerActions.targetedBlock(mc);
-        if (hit == null) return;
-        if (mc.world.getRegistryKey() == World.NETHER) return; // anchors do not explode in the Nether
-        if (mc.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR)) return;
-        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(anchorSlot)).isOf(Items.RESPAWN_ANCHOR)) return;
-        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(glowstoneSlot)).isOf(Items.GLOWSTONE)) return;
-        if (!TotemUtil.isTotem(player.getInventory().getStack(TotemUtil.hotbarIndex(totemSlot)))) return;
+        if (hit == null) { why("no block under the crosshair (reach is limited)"); return; }
+        if (mc.world.getRegistryKey() == World.NETHER) { why("anchors do not explode in the Nether"); return; }
+        if (mc.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR)) {
+            why("you look at an anchor: aim at the floor or a wall block (use Anchor Macro for an existing anchor)");
+            return;
+        }
+        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(anchorSlot)).isOf(Items.RESPAWN_ANCHOR)) {
+            why("hotbar slot " + anchorSlot.get().intValue() + " (Anchor Slot) has no respawn anchor");
+            return;
+        }
+        if (!player.getInventory().getStack(TotemUtil.hotbarIndex(glowstoneSlot)).isOf(Items.GLOWSTONE)) {
+            why("hotbar slot " + glowstoneSlot.get().intValue() + " (GlowStone Slot) has no glowstone");
+            return;
+        }
+        if (!TotemUtil.isTotem(player.getInventory().getStack(TotemUtil.hotbarIndex(totemSlot)))) {
+            why("hotbar slot " + totemSlot.get().intValue() + " (Totem Slot) has no totem");
+            return;
+        }
         anchorPos = hit.getBlockPos().offset(hit.getSide());
-        if (!mc.world.getBlockState(anchorPos).isReplaceable()) return;
+        if (!mc.world.getBlockState(anchorPos).isReplaceable()) { why("the spot for the first anchor is occupied"); return; }
+        if (player.getInventory().getStack(TotemUtil.hotbarIndex(anchorSlot)).getCount() < 2) {
+            why("only one anchor in the slot: the second one cannot be placed");
+        }
+        if (player.getInventory().getStack(TotemUtil.hotbarIndex(glowstoneSlot)).getCount() < 2) {
+            why("only one glowstone in the slot: the second anchor cannot be charged");
+        }
         base = hit;
         secondBase = null;
         secondPos = null;
@@ -155,6 +179,18 @@ public final class DoubleAnchor extends MacroModule {
         besideRun = !legit() && "Beside".equals(secondSpot.get());
         phase = FIRST;
         runner.start(besideRun ? beside : first);
+    }
+
+    private void why(String reason) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (debug.get() && mc.player != null) mc.player.sendMessage(Text.literal("Double Anchor: " + reason), true);
+    }
+
+    /** Right click on a block; reports a rejected click when Debug is on. */
+    private boolean click(MinecraftClient mc, String step, BlockHitResult hit) {
+        boolean ok = PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, hit);
+        if (!ok) why(step + " was not accepted by the game");
+        return ok;
     }
 
     /** A spot where a block can be placed: replaceable and not inside your own hitbox. */
@@ -205,7 +241,7 @@ public final class DoubleAnchor extends MacroModule {
         BlockHitResult click = placeClick(mc);
         if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(anchorSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
+        click(mc, "placing the first anchor", click);
     }
 
     /** Beside mode: the second anchor, placed while the first one is still uncharged. */
@@ -220,9 +256,10 @@ public final class DoubleAnchor extends MacroModule {
             secondPos = spot;
             secondBase = click;
             PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(anchorSlot));
-            PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
+            click(mc, "placing the second anchor", click);
             return;
         }
+        why("no free spot with a support next to the first anchor: only one anchor is used");
         secondPos = null; // no spot with a support: only the first anchor is used
     }
 
@@ -232,14 +269,14 @@ public final class DoubleAnchor extends MacroModule {
         BlockHitResult click = anchorClick(mc);
         if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(glowstoneSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
+        click(mc, "charging the first anchor", click);
     }
 
     private void chargeSecond() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || secondPos == null) return;
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(glowstoneSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, PlayerActions.topOf(secondPos));
+        click(mc, "charging the second anchor", PlayerActions.topOf(secondPos));
     }
 
     private void explode() {
@@ -248,14 +285,14 @@ public final class DoubleAnchor extends MacroModule {
         BlockHitResult click = anchorClick(mc);
         if (click == null) { cancel(); return; }
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(totemSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, click);
+        click(mc, "exploding the first anchor", click);
     }
 
     private void explodeSecond() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || secondPos == null) return;
         PlayerActions.selectSlot(mc.player, TotemUtil.hotbarIndex(totemSlot));
-        PlayerActions.useOnBlock(mc, Hand.MAIN_HAND, PlayerActions.topOf(secondPos));
+        click(mc, "exploding the second anchor", PlayerActions.topOf(secondPos));
     }
 
     private void restore() {
